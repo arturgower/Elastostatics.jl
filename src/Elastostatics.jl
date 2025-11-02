@@ -5,6 +5,8 @@ export DisplacementType,TractionType,BoundaryData, Elastic
 using Accessors
 using LinearAlgebra
 using StaticArrays: SVector
+using MultipleScattering
+import Statistics: mean
 
 # Write your package code here.
 
