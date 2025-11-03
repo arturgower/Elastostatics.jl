@@ -1,4 +1,4 @@
-using Elastostatics
+using MethodOfFundamentalSolutions
 using Test
 
 include("benchmarks.jl")

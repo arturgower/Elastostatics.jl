@@ -1,2 +1,2 @@
-using Elastostatics
+using MethodOfFundamentalSolutions
 using Plots

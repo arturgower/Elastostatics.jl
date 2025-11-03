@@ -12,6 +12,14 @@
 
     r = 1.3
 
+    # Create point cloud each resolution
+    clouds = map(θs_arr) do θs
+        points = [[r*cos(θ), r*sin(θ)] for θ in θs]
+        outward_normals = [[cos(θ), sin(θ)] for θ in θs]
+        interior_points = [[0.0, 0.0]]
+        PointCloud(points; outward_normals = outward_normals, interior_points = interior_points)
+    end
+
     # Create boundary data for each resolution
     bds = map(θs_arr) do θs
         points = [[r*cos(θ), r*sin(θ)] for θ in θs]
