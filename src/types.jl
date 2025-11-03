@@ -40,3 +40,13 @@ function BoundaryData(field_type::F;
 
     return BoundaryData{F,Dim}(interior_points, points, fields)
 end
+
+"""
+Struct to hold results of a simulations evaluate over different spatial positions.
+"""
+struct FieldResults{T<:Real,Dim,FieldDim}
+    "Values of field through space"
+    field::Vector{SVector{FieldDim,Complex{T}}}
+    "Positions"
+    x::Vector{SVector{Dim,T}}
+end

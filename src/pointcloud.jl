@@ -35,38 +35,35 @@ end
 import MultipleScattering: name
 name(shape::PointCloud) = "PointCloud"
 
-bounding_box(poly::PointCloud) = Box(poly.boundary_points)
+bounding_box(cloud::PointCloud) = Box(cloud.boundary_points)
 
-# import Base.in
-# function in(x::AbstractVector, poly::Polygon)::Bool
-#     # Ray-casting algorithm for point-in-polygon test
-#     n = length(poly.boundary_points)
-#     inside = false
-#     j = n
-#     for i in 1:n
-#         xi, yi = poly.boundary_points[i][1], poly.boundary_points[i][2]
-#         xj, yj = poly.boundary_points[j][1], poly.boundary_points[j][2]
-#         if ((yi > x[2]) != (yj > x[2])) && (x[1] < (xj - xi) * (x[2] - yi) / (yj - yi) + xi)
-#             inside = !inside
-#         end
-#         j = i
-#     end
-#     return inside
-# end
+import Base.in
+function in(x::AbstractVector, cloud::PointCloud)::Bool
+
+    # find nearest point p on the boundary to x. And nearest interior point q to x. If |q - x| < |q - p| then the point is inside the body defined by cloud 
+    dists = [sum((x - p) .^2) for p in cloud.boundary_points];
+    p = cloud.boundary_points[argmin(dists)]
+
+    dists = [sum((x - p) .^2) for p in cloud.interior_points];
+    q = cloud.interior_points[argmin(dists)]
+    
+    inside = norm(x - q) < norm(p - q) ? true : false
+    return inside
+end
 
 import Base.issubset
-function issubset(poly::PointCloud, box::Box)
-    poly_box = bounding_box(poly)
-    return issubset(poly_box,box)
+function issubset(cloud::PointCloud, box::Box)
+    cloud_box = bounding_box(cloud)
+    return issubset(cloud_box,box)
 end
 
 """
-    issubset(box::Box, poly::Polygon)
+    issubset(box::Box, poly::PointCloud)
 
 Returns true if the corners of the box are contained within polygon, false otherwise.
 """
-function issubset(box::Box, poly::PointCloud)
-    return all(c ∈ poly for c in corners(box))
+function issubset(box::Box, cloud::PointCloud)
+    return all(c ∈ cloud for c in corners(box))
 end
 
 
@@ -82,8 +79,8 @@ function outward_normals(boundary_points, interior_points)
     Dim = length(pts[1])
     T = eltype(pts[1])
 
-    # number of neighbors to use (at least Dim, at most n-1)
-    k = min(Dim+2, max(1, n-1))
+    # number of neighbors to use (at least Dim+1, at most n-1)
+    k = min(2Dim, max(1, n-1))
 
     normals = Vector{typeof(pts[1])}(undef, n)
 
