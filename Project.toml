@@ -1,4 +1,4 @@
-name = "Elastostatics"
+name = "MethodOfFundamentalSolutions"
 uuid = "ba3e41b4-2650-4840-9ccc-c46ea99e8b95"
 version = "1.0.0-DEV"
 authors = ["artur-gower"]
