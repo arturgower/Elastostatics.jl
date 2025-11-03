@@ -1,5 +1,6 @@
 module MethodOfFundamentalSolutions
 
+export PointCloud, outward_normals
 export DisplacementType,TractionType,BoundaryData, Elastic, Acoustic
 
 using Accessors

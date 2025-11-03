@@ -1,5 +1,6 @@
 using MethodOfFundamentalSolutions
-using Test
+using Test, Statistics
 
-include("benchmarks.jl")
+include("pointcloud_test.jl")
+include("benchmarks_test.jl")
 

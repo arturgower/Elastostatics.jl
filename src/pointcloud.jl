@@ -8,17 +8,29 @@ struct PointCloud{T,Dim} <: Shape{Dim}
     boundary_points::Vector{SVector{Dim,T}}
     outward_normals::Vector{SVector{Dim,T}}
     interior_points::Vector{SVector{Dim,T}}
+
+    function PointCloud(boundary_points::Vector{V}; 
+            interior_points::Vector{V} = [mean(boundary_points)],
+            outward_normals::Vector{V} = outward_normals(boundary_points, interior_points)
+        ) where {V <: AbstractVector}
+
+        T = eltype(boundary_points[1])
+        Dim = length(boundary_points[1])
+
+        new{T,Dim}(boundary_points, outward_normals, interior_points)
+    end
 end
 
-function PointCloud(boundary_points::Vector{V}; 
-        interior_points::Vector{V} = [mean(boundary_points)],
-        outward_normals::Vector{V} = [boundary_points[1] .* zero(typeof(boundary_points[1][1]))]
-    ) where {V <: AbstractVector}
+# function PointCloud(boundary_points::Vector{V}; 
+#         interior_points::Vector{V} = [mean(boundary_points)],
+#         outward_normals::Vector{V} = [boundary_points[1] .* zero(typeof(boundary_points[1][1]))]
+#     ) where {V <: AbstractVector}
 
-    T = eltype(boundary_points[1])
-    Dim = length(boundary_points[1])
-    Polygon{T,Dim}(boundary_points, outward_normals, interior_points)
-end
+#     T = eltype(boundary_points[1])
+#     Dim = length(boundary_points[1])
+#     PointCloud{T,Dim}(boundary_points, outward_normals, interior_points)
+# end
+
 
 import MultipleScattering: name
 name(shape::PointCloud) = "PointCloud"
@@ -58,9 +70,11 @@ function issubset(box::Box, poly::PointCloud)
 end
 
 
-function outward_normals(cloud::PointCloud)
+outward_normals(cloud::PointCloud) = outward_normals(cloud.boundary_points, cloud.interior_points)
 
-    pts = cloud.boundary_points
+function outward_normals(boundary_points, interior_points)
+
+    pts = boundary_points
     n = length(pts)
     if n == 0
         return Vector{typeof(pts[1])}()
@@ -73,43 +87,31 @@ function outward_normals(cloud::PointCloud)
 
     normals = Vector{typeof(pts[1])}(undef, n)
 
-    # helper to compute squared distances
-    sqrddist(a,b) = sum((a .- b).^2)
-
     # for orientation choose the closest interior point to each boundary point
     for i in 1:n
         p = pts[i]
 
         # find k nearest neighbours (including the point itself)
-        dists = [sqrddist(p, q) for q in pts]
+        dists = [sum((p - q) .^2) for q in pts]
         idx = sortperm(dists)[1:min(k+1, n)]   # +1 because p itself is at distance 0
         neighbors = pts[idx]
 
         # center data and compute covariance
         m = length(neighbors)
-        μ = reduce(+, neighbors) / m
-        X = hcat((neighbors .- μ)...)            # Dim x m matrix
-        C = (X * transpose(X)) / max(1, m-1)    # covariance-like matrix (Dim x Dim)
+        μ = mean(neighbors)
+        X = hcat([μ - q for q in neighbors]...) # Dim x k+1 matrix
+        C = (X * transpose(X)) / max(1, m-1)   # covariance-like matrix (Dim x Dim)
 
         # eigen-decomposition: smallest eigenvalue eigenvector is normal to a (Dim-1)-manifold
-        E = eigen(Symmetric(C))
+        E = eigen(C)
         jmin = argmin(E.values)
         nvec = E.vectors[:, jmin]
-        if norm(nvec) == 0
-            # fallback: use vector from point to centroid of boundary points
-            centroid = reduce(+, pts) / n
-            nvec = p .- centroid
-            if norm(nvec) == 0
-                # fallback 2: unit x-axis
-                nvec = zeros(Dim); nvec[1] = 1.0
-            end
-        end
         nvec = nvec / norm(nvec)
 
         # orient normal to point outward (away from interior)
         # pick closest interior point
-        intdists = [sqrddist(p, q) for q in cloud.interior_points]
-        intp = cloud.interior_points[argmin(intdists)]
+        intdists = [sum((p - q) .^2) for q in interior_points]
+        intp = interior_points[argmin(intdists)]
         interior_vector = intp .- p    # points from boundary point into interior
         # if dot(nvec, interior_vector) > 0 then nvec points inward -> flip
         if dot(nvec, interior_vector) > 0
