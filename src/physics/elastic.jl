@@ -19,3 +19,4 @@ end
 
 struct DisplacementType <: FieldType end
 struct TractionType <: FieldType end
+struct StrainType <: FieldType end

@@ -92,6 +92,11 @@ end
 
 field(fr::FieldResults) = fr.field
 
+struct FundamentalSolution{T<:Real,Dim,FieldDim}
+    x_source::Vector{SVector{Dim,T}}
+    coefficients:: Vector{SVector{FieldDim,T}}
+end
+
 # Interface implementations
 Base.length(fr::FieldResults) = length(fr.x)
 Base.getindex(fr::FieldResults, i::Int) = (fr.x[i], fr.field[i])
