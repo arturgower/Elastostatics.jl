@@ -48,6 +48,6 @@
     res = FieldResults(x_vec, field_mat[:])
 
     # using Plots
-    plot(res, clims = (-1,1))
-    plot(cloud)
+    # plot(res, clims = (-1,1))
+    # plot(cloud)
 end
