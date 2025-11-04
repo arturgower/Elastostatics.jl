@@ -28,7 +28,7 @@ end
 struct DisplacementType <: FieldType end
 struct TractionType <: FieldType end
 
-function greens_matrix(medium::Elasticstatic{2,T}, FT::TractionType, x::SVector{2,T}, outward_normal::SVector{2,T}) where T
+function greens(medium::Elasticstatic{2,T}, FT::TractionType, x::SVector{2,T}, outward_normal::SVector{2,T}) where T
 
     n = outward_normal
     μ = medium.ρ * medium.cs^2  
@@ -37,15 +37,15 @@ function greens_matrix(medium::Elasticstatic{2,T}, FT::TractionType, x::SVector{
     r2 = dot(x,x)
     xn = dot(x,n)
 
-    T = [
+    Σn = [
         μ * (xn * (l == i) + x[i]*n[l] - x[l]*n[i]) + 2(λ+μ) * (x[l]*x[i]*xn / r2)
     for i = 1:2, l = 1:2]
-    T = T ./ (2pi*(λ+2μ)*r2)
+    Σn = Σn ./ (2pi*(λ+2μ)*r2)
 
     return Σn 
 end
 
-function greens_matrix(medium::Elasticstatic{2,T}, FT::DisplacementType, x::SVector{2,T}, outward_normal::SVector{2,T}) where T
+function greens(medium::Elasticstatic{2,T}, FT::DisplacementType, x::SVector{2,T}, outward_normal::SVector{2,T}) where T
 
     μ = medium.ρ * medium.cs^2  
     λ = medium.ρ * medium.cp^2 - 2μ

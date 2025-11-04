@@ -1,7 +1,7 @@
 module MethodOfFundamentalSolutions
 
 export PointCloud, outward_normals, points_in_shape
-export FieldResults, field
+export FieldResults, greens, field
 export DisplacementType, TractionType, BoundaryData, Elastic, Acoustic
 
 using Accessors
