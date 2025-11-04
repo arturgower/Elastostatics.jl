@@ -32,15 +32,7 @@
     @series begin
         label --> "Boundary points"
         seriestype --> :scatter
-        markersize --> 2.0
-        (bx, by)
-    end
-
-    @series begin
-        label --> ""
-        color --> :black
-        seriestype --> :quiver
-        quiver --> (nx, ny)
+        markersize --> 4.0
         (bx, by)
     end
 
@@ -49,6 +41,16 @@
         seriestype --> :scatter
         markersize --> 6.0
         (ix, iy)
+    end
+
+    @series begin
+        label --> ""
+        color --> :black
+        seriestype --> :quiver
+        quiver --> (nx, ny)
+        marker = :none           # remove marker symbol at arrow tips
+        markersize --> 0.0          # fallback to ensure no marker is drawn
+        (bx, by)
     end
 end
 

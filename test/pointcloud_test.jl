@@ -14,6 +14,7 @@
         cloud = PointCloud(points; interior_points = interior_points)
 
         errors = [norm(outward_ns[i] - cloud.outward_normals[i]) for i in eachindex(outward_ns)]
+
     @test maximum(errors) < 1e-10
 
     ε = 0.1
@@ -47,6 +48,6 @@
     res = FieldResults(x_vec, field_mat[:])
 
     # using Plots
-    # plot(res, clims = (-1,1))
-    # plot!(cloud)
+    plot(res, clims = (-1,1))
+    plot(cloud)
 end
