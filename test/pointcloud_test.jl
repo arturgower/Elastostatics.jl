@@ -30,15 +30,23 @@
 
     @test maximum(errors) < 0.1
    
-    
-    x_vec, inds = points_in_shape(cloud; res = 12)
+    # Let us check whether the interior is correctly defined.
+    x_vec, inds = points_in_shape(cloud; res = 20)
     # x_vec is a square grid of points and x_vec[inds] are the points in the region.
 
     xs = x_vec[inds]
-    field_mat = [SVector(0.0+0.0im, 0.0+0.0im) for x in x_vec]
 
-    fs = [field(wave,x,fieldtype) for x in xs];
+    @test all([norm(x) < r * 1.1 for x in xs])
+
+    field_mat = [[0.0, 0.0] for x in x_vec]
+
+    # fs = [field(wave,x,fieldtype) for x in xs];
+    fs = [[1.0, 1.0] for x in xs];
     field_mat[inds] = fs
 
-    return  FrequencySimulationResult(reshape(field_mat, :, 1), x_vec, [wave.ω])
+    res = FieldResults(x_vec, field_mat[:])
+
+    # using Plots
+    # plot(res, clims = (-1,1))
+    # plot!(cloud)
 end

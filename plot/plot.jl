@@ -1,7 +1,9 @@
-using RecipesBase
-
 # recipe for plotting a PointCloud. Assumes 2D boundary_points 
 @recipe function plot(cloud::PointCloud)
+    # Set default attributes
+    markershape --> :circle
+    legend --> false
+    aspect_ratio --> 1.0
 
     bs = cloud.boundary_points
     ns = cloud.outward_normals
@@ -30,7 +32,7 @@ using RecipesBase
     @series begin
         label --> "Boundary points"
         seriestype --> :scatter
-        markersize -> 2
+        markersize --> 2.0
         (bx, by)
     end
 
@@ -45,68 +47,50 @@ using RecipesBase
     @series begin
         label --> "Interior points"
         seriestype --> :scatter
-        markersize -> 4
+        markersize --> 6.0
         (ix, iy)
     end
 end
 
-"Plot the field for a particular wavenumber"
-@recipe function plot(res::Simulation{2};
-        resolution = 10, res = resolution, xres=res, yres=res,
-        field_apply=real,
-        region_shape = :auto,
-        bounds = :auto,
-        exclude_region = EmptyShape{2}(),
-        drawparticles=true)
 
-    # If user wants us to, generate bounding rectangle around particles
-    region_shape = (region_shape != :auto) ? region_shape :
-        if isempty(sim.particles)
-            if bounds == :auto
-                @warn "What region to plot? For example, use keyword bounds = Box([[-1.0,-1.0],[1.0,1.0]])"
-                Box([[-1.0,-1.0],[1.0,1.0]])
-            else bounds
-            end
-        else
-            region_shape = bounding_box(sim.particles)
-        end
+# Plot the result in space (across all x) for a specific angular frequency
+@recipe function plot(res::FieldResults;
+        region_shape = :empty, field_apply := first)
 
-    bounds = bounding_box(region_shape)
-    # If user has not set xlims and ylims, set them to the rectangle
-    xlims --> (bottomleft(bounds)[1], topright(bounds)[1])
-    ylims --> (bottomleft(bounds)[2], topright(bounds)[2])
+    x = [x[1] for x in res.x]
+    y = [x[end] for x in res.x] # y will actually be z for 3D...
 
-    # Incase the user did set the xlims and ylims, generate a new bounding
-    # rectangle with them
-    p_xlims = plotattributes[:xlims]
-    p_ylims = plotattributes[:ylims]
-    bounds = Box([[p_xlims[1],p_ylims[1]], [p_xlims[2],p_ylims[2]]])
+    seriestype --> :heatmap
+    seriescolor --> :balance
+    aspect_ratio --> 1.0
 
-    region_shape = (bounds ⊆ region_shape) ? bounds : region_shape
+    st = get(plotattributes, :seriestype, :surface)
+    
+    if st == :heatmap
+        # We could check here to see if x and y have the right structure
+        x = unique(x)
+        y = unique(y)
 
-    field_sim = run(sim, region_shape, [ω]; xres=xres, yres=yres, zres=yres, exclude_region=exclude_region)
-    xy_mat = reshape(field_sim.x, (xres+1, yres+1))
-    x_pixels = [x[1] for x in xy_mat[:,1]]
-    y_pixels = [x[2] for x in xy_mat[1,:]]
+        n_x = length(x)
+        n_y = length(y)
 
-    @series begin
-
-        # Turn the responses (a big long vector) into a matrix, so that the heatmap will understand us
-        response_mat = transpose(reshape(field(field_sim), (xres+1, yres+1)))
-        seriestype --> :contour
         fill --> true
-        grid --> false
-        aspect_ratio := 1.0
-        seriescolor --> :balance
-        title --> "Field at ω=$ω"
 
-        (x_pixels, y_pixels, field_apply.(response_mat))
-    end
+        if region_shape != :empty
+            bounds = bounding_box(region_shape)
 
-    if drawparticles
-        @series begin
-            sim.particles
+            # If user has not set xlims and ylims, set them to the rectangle
+            xlims --> (bottomleft(bounds)[1], topright(bounds)[1])
+            ylims --> (bottomleft(bounds)[2], topright(bounds)[2])
+        else
+            xlims --> (minimum(x), maximum(x))
+            ylims --> (minimum(y), maximum(y))
         end
+
+        x, y, field_apply.(transpose(reshape(field(res),n_x,n_y)))
+
+    else
+        (x, y, field_apply.(field(res)))
     end
 
 end
