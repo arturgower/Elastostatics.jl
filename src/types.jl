@@ -93,7 +93,7 @@ end
 field(fr::FieldResults) = fr.field
 
 struct FundamentalSolution{T<:Real,Dim,FieldDim}
-    source_positions::Vector{SVector{Dim,T}}
+    positions::Vector{SVector{Dim,T}}
     coefficients:: Vector{SVector{FieldDim,T}}
 end
 
