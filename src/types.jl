@@ -5,6 +5,40 @@ A type used to specify what type of physical field, such as traction or displace
 """
 abstract type FieldType end
 
+struct FundamentalSolution{Dim,P<:PhysicalMedium{Dim},T<:Real}
+    medium::P
+    positions::Vector{SVector{Dim,T}}
+    coefficients::Array{T}
+
+    function FundamentalSolution(medium::P,
+            positions::Vector{<:AbstractVector},
+            coefficients::AbstractArray) where {P<:PhysicalMedium}
+        
+        # Extract dimension information
+        Dim = dimension(medium)
+        T = eltype(positions[1])
+        
+        # Validate dimensions
+        if !all(p -> length(p) == Dim, positions)
+            throw(ArgumentError("All positions must have dimension $Dim"))
+        end
+
+        # Validate coefficients
+        FD = field_dimension(medium)
+        if length(coefficients) != length(positions) * FD 
+            throw(ArgumentError(
+                "Expected $(length(positions) * FD) coefficients but got $(length(coefficients))"
+            ))
+        end
+
+        # Convert inputs to proper types
+        pos_converted = convert(Vector{SVector{Dim,T}}, positions)
+
+        return new{Dim,P,T}(medium, pos_converted, coefficients)
+    end
+end
+
+
 """
 BoundaryData{F,Dim}
 
@@ -23,13 +57,16 @@ Fields
 Notes
 - It is expected that `length(points) == length(fields)` and that entries are aligned by index.
 """
-struct BoundaryData{F <: FieldType,Dim}
-    interior_points::Vector{SVector{Dim,Float64}}
-    points::Vector{SVector{Dim,Float64}}
-    fields::Vector{SVector{Dim,Float64}}
+struct BoundaryData{F <: FieldType, FieldDim, PC <: PointCloud}
+    cloud::PC
+    fields::Vector{SVector{FieldDim,Float64}}
 end
 
 # Constructor without type parameters
+function BoundaryData(field_type::F, fields::Vector{V}, cloud::PointCloud) where {F <: FieldType, V}
+    return BoundaryData{FieldType,typeof(cloud)}(cloud, fields)
+end
+
 function BoundaryData(field_type::F; 
         points = [zeros(3)], 
         interior_points = mean(points) |> x -> [SVector(x...)],
@@ -97,15 +134,3 @@ Base.length(fr::FieldResults) = length(fr.x)
 Base.getindex(fr::FieldResults, i::Int) = (fr.x[i], fr.field[i])
 Base.iterate(fr::FieldResults) = length(fr) == 0 ? nothing : ((fr.x[1], fr.field[1]), 1)
 Base.iterate(fr::FieldResults, state) = state >= length(fr) ? nothing : ((fr.x[state+1], fr.field[state+1]), state + 1)
-
-
-struct FundamentalSolution{Dim, P<:PhysicalMedium{Dim},T<:Real}
-    medium::P
-    positions::Vector{SVector{Dim,T}}
-    coefficients::Array{T}
-
-    function FundamentalSolution(medium::P, positions::Vector{V}, coefficients::Array) where {V <: AbstractVector, P <: <:PhysicalMedium}
-
-        return new{T, Dim, P}(convert(Vector{SVector{Dim,T}}, positions), coefficients)
-    end
-end

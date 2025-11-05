@@ -1,36 +1,69 @@
 """
     PointCloud(boundary_points::Vector{SVector{Dim,T}}, interior_points::Vector{SVector{Dim,T}}) where {T, Dim}
 
-A [`Shape`](@ref) defined by a set of points on the boundary `boundary_points`. There is no particular order to the `boundary_points`. The `interior_points` are a set of points that are in the interior of the body and are used to quickly determine what is inside or not. See
+A [`Shape`](@ref) defined by a set of points on the boundary with no particular order in the data. 
+
+Type parameters
+- F <: FieldType: the physical field witehr displacement or traction.
+- Dim: Integer-sized compile-time dimension of the spatial dimension
+
+Fields
+- `interior_points::Vector{SVector{Dim,Float64}}`
+    A vector of spatial points in the interior of the domain used to determine what is inside the domain. See
 @doc in(x::AbstractVector, cloud::PointCloud).
+- `points::Vector{SVector{Dim,Float64}}`
+    A vector of spatial points on the boundary
+- `fields::Vector{SVector{Dim,Float64}}`
+    `fields[i]` is the value of the physical field at `points[i]`
+
+Notes
+- It is expected that `length(points) == length(fields)` and that entries are aligned by index.
 """
-struct PointCloud{T,Dim} <: Shape{Dim}
-    boundary_points::Vector{SVector{Dim,T}}
-    outward_normals::Vector{SVector{Dim,T}}
-    interior_points::Vector{SVector{Dim,T}}
+struct PointCloud{Dim} <: Shape{Dim}
+    boundary_points::Vector{SVector{Dim,Float64}}
+    outward_normals::Vector{SVector{Dim,Float64}}
+    interior_points::Vector{SVector{Dim,Float64}}
 
     function PointCloud(boundary_points::Vector{V}; 
             interior_points::Vector{V} = [mean(boundary_points)],
-            outward_normals::Vector{V} = outward_normals(boundary_points, interior_points)
+            outward_normals::Vector{V} = outward_normals(boundary_points,interior_points),
         ) where {V <: AbstractVector}
 
-        T = eltype(boundary_points[1])
         Dim = length(boundary_points[1])
 
-        new{T,Dim}(boundary_points, outward_normals, interior_points)
+        # All outward normals should have unit length
+        outward_normals = [n / norm(n) for n in outward_normals]
+
+        new{Dim}(boundary_points, outward_normals, interior_points)
     end
 end
 
-# function PointCloud(boundary_points::Vector{V}; 
-#         interior_points::Vector{V} = [mean(boundary_points)],
-#         outward_normals::Vector{V} = [boundary_points[1] .* zero(typeof(boundary_points[1][1]))]
-#     ) where {V <: AbstractVector}
+"""
+    source_positions(cloud::PointCloud; α=1.0)
 
-#     T = eltype(boundary_points[1])
-#     Dim = length(boundary_points[1])
-#     PointCloud{T,Dim}(boundary_points, outward_normals, interior_points)
-# end
+Return source positions for MFS from a `PointCloud`.
 
+- α: scale factor for the distance of the source from the boundary d = α * h, where h is the average distance between consecutive points on the boundary.
+"""
+function source_positions(cloud::PointCloud; α = 1.0) 
+
+    points = cloud.boundary_points 
+    len = points |> length
+    
+    # Note this could be calculated at the same time as the outward normals. But that would make the code quite ugly!
+    # Sample just a few number of points to approximate the distance between neighbours
+    sampled_rng = LinRange(1,len, min(6,len)) .|> round .|> Int
+    neighbors_dists = map(points[sampled_rng]) do p 
+        dists = [sum((p - q) .^2) for q in points]
+        idx = sortperm(dists)[2:min(3, len)]
+        mean(dists[idx])
+    end
+    source_distance = mean(neighbors_dists) * α
+    
+    return map(cloud.boundary_points |> eachindex) do i
+        p = cloud.boundary_points[i] + cloud.outward_normals[i] .* source_distance 
+    end
+end
 
 import MultipleScattering: name
 name(shape::PointCloud) = "PointCloud"
@@ -67,7 +100,12 @@ function issubset(box::Box, cloud::PointCloud)
 end
 
 
-outward_normals(cloud::PointCloud) = outward_normals(cloud.boundary_points, cloud.interior_points)
+function outward_normals!(cloud::PointCloud) 
+    ns, dist = outward_normals_and_neighbour_distance(cloud.boundary_points, cloud.interior_points)
+    cloud.outward_normals[:] = ns
+
+    return cloud
+end
 
 function outward_normals(boundary_points, interior_points)
 
@@ -83,6 +121,7 @@ function outward_normals(boundary_points, interior_points)
     k = min(2Dim, max(1, n-1))
 
     normals = Vector{typeof(pts[1])}(undef, n)
+    # neighbour_distances = Vector{T}(undef, n)
 
     # for orientation choose the closest interior point to each boundary point
     for i in 1:n
@@ -92,6 +131,8 @@ function outward_normals(boundary_points, interior_points)
         dists = [sum((p - q) .^2) for q in pts]
         idx = sortperm(dists)[1:min(k+1, n)]   # +1 because p itself is at distance 0
         neighbors = pts[idx]
+
+        # neighbour_distances[i] = mean(dists[idx])
 
         # center data and compute covariance
         m = length(neighbors)
@@ -119,5 +160,7 @@ function outward_normals(boundary_points, interior_points)
         normals[i] = convert(SVector{Dim,T}, nvec)
     end
 
+    # neighbour_distance = mean(neighbour_distances) - std(neighbour_distances) / 2
+    # return normals, neighbour_distance
     return normals
 end
