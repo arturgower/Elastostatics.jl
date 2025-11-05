@@ -1,5 +1,12 @@
 """
-    PointCloud(boundary_points::Vector{SVector{Dim,T}}, interior_points::Vector{SVector{Dim,T}}) where {T, Dim}
+    FieldType
+
+A type used to specify what type of physical field, such as traction or displacement.
+"""
+abstract type FieldType end
+
+"""
+    BoundaryData(field_type::F; boundary_points = , fields = , interior_points = , outward_normals = ) where {F <: FieldType}
 
 A [`Shape`](@ref) defined by a set of points on the boundary with no particular order in the data. 
 
@@ -19,33 +26,37 @@ Fields
 Notes
 - It is expected that `length(points) == length(fields)` and that entries are aligned by index.
 """
-struct PointCloud{Dim} <: Shape{Dim}
+struct BoundaryData{F <: FieldType, Dim, FieldDim} <: Shape{Dim}
     boundary_points::Vector{SVector{Dim,Float64}}
+    fields::Vector{SVector{FieldDim,Float64}}
     outward_normals::Vector{SVector{Dim,Float64}}
     interior_points::Vector{SVector{Dim,Float64}}
 
-    function PointCloud(boundary_points::Vector{V}; 
+    function BoundaryData(field_type::F; 
+            boundary_points::Vector{V} = [zeros(Float64,2)], 
+            fields::Vector{FV} = [p .* 0.0 for p in boundary_points],
             interior_points::Vector{V} = [mean(boundary_points)],
             outward_normals::Vector{V} = outward_normals(boundary_points,interior_points),
-        ) where {V <: AbstractVector}
+        ) where {F <: FieldType, V <: AbstractVector, FV <: AbstractVector}
 
         Dim = length(boundary_points[1])
+        FieldDim = length(fields[1])
 
         # All outward normals should have unit length
         outward_normals = [n / norm(n) for n in outward_normals]
 
-        new{Dim}(boundary_points, outward_normals, interior_points)
+        new{F,Dim,FieldDim}(boundary_points, fields, outward_normals, interior_points)
     end
 end
 
 """
-    source_positions(cloud::PointCloud; α=1.0)
+    source_positions(cloud::BoundaryData; α=1.0)
 
-Return source positions for MFS from a `PointCloud`.
+Return source positions for MFS from some `BoundaryData`.
 
 - α: scale factor for the distance of the source from the boundary d = α * h, where h is the average distance between consecutive points on the boundary.
 """
-function source_positions(cloud::PointCloud; α = 1.0) 
+function source_positions(cloud::BoundaryData; α = 1.0) 
 
     points = cloud.boundary_points 
     len = points |> length
@@ -66,12 +77,12 @@ function source_positions(cloud::PointCloud; α = 1.0)
 end
 
 import MultipleScattering: name
-name(shape::PointCloud) = "PointCloud"
+name(shape::BoundaryData) = "BoundaryData"
 
-bounding_box(cloud::PointCloud) = Box(cloud.boundary_points)
+bounding_box(cloud::BoundaryData) = Box(cloud.boundary_points)
 
 import Base.in
-function in(x::AbstractVector, cloud::PointCloud)::Bool
+function in(x::AbstractVector, cloud::BoundaryData)::Bool
 
     # find nearest point p on the boundary to x. And nearest interior point q to x. If |q - x| < |q - p| then the point is inside the body defined by cloud 
     dists = [sum((x - p) .^2) for p in cloud.boundary_points];
@@ -85,7 +96,7 @@ function in(x::AbstractVector, cloud::PointCloud)::Bool
 end
 
 import Base.issubset
-function issubset(cloud::PointCloud, box::Box)
+function issubset(cloud::BoundaryData, box::Box)
     cloud_box = bounding_box(cloud)
     return issubset(cloud_box,box)
 end
@@ -95,12 +106,12 @@ end
 
 Returns true if the corners of the box are contained within polygon, false otherwise.
 """
-function issubset(box::Box, cloud::PointCloud)
+function issubset(box::Box, cloud::BoundaryData)
     return all(c ∈ cloud for c in corners(box))
 end
 
 
-function outward_normals!(cloud::PointCloud) 
+function outward_normals!(cloud::BoundaryData) 
     ns, dist = outward_normals_and_neighbour_distance(cloud.boundary_points, cloud.interior_points)
     cloud.outward_normals[:] = ns
 

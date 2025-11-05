@@ -1,5 +1,5 @@
 # recipe for plotting a PointCloud. Assumes 2D boundary_points 
-@recipe function plot(cloud::PointCloud)
+@recipe function plot(cloud::BoundaryData)
     # Set default attributes
     markershape --> :circle
     legend --> false

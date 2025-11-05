@@ -1,18 +1,18 @@
 """
-    Elastic{Dim,T<:AbstractFloat}(ρ::T, c::Complex{T})
-    Elastic(ρ::T, c::Union{T,Complex{AbstractFloat}}, Dim::Integer)
+    Elastostatic{Dim,T<:AbstractFloat}(ρ::T, c::Complex{T})
+    Elastostatic(ρ::T, c::Union{T,Complex{AbstractFloat}}, Dim::Integer)
 
 Physical properties for a homogenous isotropic elastic medium for static simulations.
 
 Simulations in this medium produce scalar (Dim) fields in Dim dimensions.
 """
-struct Elasticstatic{Dim,T} <: PhysicalMedium{Dim,Dim}
+struct Elastostatic{Dim,T} <: PhysicalMedium{Dim,Dim}
     ρ::T # Density (use \greekletter+tab to get the greek letter!)
     cp::Complex{T} # Phase velocity of pressure wave
     cs::Complex{T} # Phase velocity of shear wave
     
     # Constructor which supplies the dimension without explicitly mentioning type
-    function Elasticstatic(Dim::Integer; ρ::T = 0.0, cp::Union{T,Complex{T}} = 0.0, cs::Union{T,Complex{T}} = 0.0) where {T<:Number}
+    function Elastostatic(Dim::Integer; ρ::T = 0.0, cp::Union{T,Complex{T}} = 0.0, cs::Union{T,Complex{T}} = 0.0) where {T<:Number}
         # check Lame parameters are positive
         μ = ρ * cs^2  
         λ = ρ * cp^2 - 2μ
@@ -28,7 +28,7 @@ end
 struct DisplacementType <: FieldType end
 struct TractionType <: FieldType end
 
-function greens(medium::Elasticstatic{2,T}, FT::TractionType, x::SVector{2,T}, outward_normal::SVector{2,T}) where T
+function greens(medium::Elastostatic{2,T}, FT::TractionType, x::SVector{2,T}, outward_normal::SVector{2,T}) where T
 
     n = outward_normal
     μ = medium.ρ * medium.cs^2  
@@ -45,7 +45,7 @@ function greens(medium::Elasticstatic{2,T}, FT::TractionType, x::SVector{2,T}, o
     return Σn 
 end
 
-function greens(medium::Elasticstatic{2,T}, FT::DisplacementType, x::SVector{2,T}, outward_normal::SVector{2,T}) where T
+function greens(medium::Elastostatic{2,T}, FT::DisplacementType, x::SVector{2,T}, outward_normal::SVector{2,T}) where T
 
     μ = medium.ρ * medium.cs^2  
     λ = medium.ρ * medium.cp^2 - 2μ

@@ -1,6 +1,8 @@
 # Here we use solutions from Airy stress function to generate boundary data, and then solve with this package to compare.
 @testset "Benchmark circular domain" begin
 
+    medium = Elastostatic(2; ρ = 1.0, cp = 2.0, cs = 1.0)
+
     # Use points sampled on the boundary with different resolutions
     θs_arr = [LinRange(0,2pi,n)[1:(n-1)] for n in (10,20,40,80)];
 
@@ -17,11 +19,16 @@
         points = [[r*cos(θ), r*sin(θ)] for θ in θs]
         outward_normals = [[cos(θ), sin(θ)] for θ in θs]
         interior_points = [[0.0, 0.0]]
-        cloud = PointCloud(points; outward_normals = outward_normals, interior_points = interior_points)
-
         fields = [[σrr(r,θ), σrθ(r,θ)] for θ in θs]
-        BoundaryData(TractionType(), fields, cloud)
+        BoundaryData(TractionType(); 
+            boundary_points = points, 
+            fields = fields, 
+            outward_normals = outward_normals,
+            interior_points = interior_points
+        )
     end
+
+    bd = bds[1]
 
     # Create boundary data for each resolution
     bds = map(θs_arr) do θs

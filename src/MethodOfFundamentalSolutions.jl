@@ -1,8 +1,8 @@
 module MethodOfFundamentalSolutions
 
-export PointCloud, outward_normals, outward_normals_and_neighbour_distance, points_in_shape
+export BoundaryData, outward_normals, points_in_shape
 export FieldResults, greens, field, source_positions
-export DisplacementType, TractionType, BoundaryData, Elastic, Acoustic
+export DisplacementType, TractionType, Elastostatic, Acoustic
 
 using Accessors
 using LinearAlgebra
@@ -17,8 +17,9 @@ import Statistics: mean
 # for ploting recipes
 using RecipesBase
 
-include("types.jl")
-include("pointcloud.jl")
+include("boundarydata.jl")
+include("solve.jl")
+
 include("physics/elastic.jl")
 include("../plot/plot.jl")
 
