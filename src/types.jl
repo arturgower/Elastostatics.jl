@@ -63,7 +63,7 @@ fields = [SVector(1.0 + 0.0im), SVector(0.0 + 1.0im)]
 results = FieldResults(positions, fields)
 ```
 """
-struct FieldResults{T<:Real,Dim,FieldDim}
+struct FieldResults{Dim,FieldDim,T<:Real}
     "Spatial positions where field is evaluated"
     x::Vector{SVector{Dim,T}}
     "Field values at corresponding positions"
@@ -85,20 +85,27 @@ struct FieldResults{T<:Real,Dim,FieldDim}
             throw(ArgumentError("All field values must have dimension $FieldDim"))
         end
 
-        new{T,Dim,FieldDim}(convert(Vector{SVector{Dim,T}}, x),
+        new{Dim,FieldDim,T}(convert(Vector{SVector{Dim,T}}, x),
                            convert(Vector{SVector{FieldDim,T}}, field))
     end
 end
 
 field(fr::FieldResults) = fr.field
 
-struct FundamentalSolution{T<:Real,Dim,FieldDim}
-    positions::Vector{SVector{Dim,T}}
-    coefficients:: Vector{SVector{FieldDim,T}}
-end
-
 # Interface implementations
 Base.length(fr::FieldResults) = length(fr.x)
 Base.getindex(fr::FieldResults, i::Int) = (fr.x[i], fr.field[i])
 Base.iterate(fr::FieldResults) = length(fr) == 0 ? nothing : ((fr.x[1], fr.field[1]), 1)
 Base.iterate(fr::FieldResults, state) = state >= length(fr) ? nothing : ((fr.x[state+1], fr.field[state+1]), state + 1)
+
+
+struct FundamentalSolution{Dim, P<:PhysicalMedium{Dim},T<:Real}
+    medium::P
+    positions::Vector{SVector{Dim,T}}
+    coefficients::Array{T}
+
+    function FundamentalSolution(medium::P, positions::Vector{V}, coefficients::Array) where {V <: AbstractVector, P <: <:PhysicalMedium}
+
+        return new{T, Dim, P}(convert(Vector{SVector{Dim,T}}, positions), coefficients)
+    end
+end

@@ -27,6 +27,8 @@
         BoundaryData(TractionType(); points = points, fields = fields)
     end
 
+    bd = bds[1]
+
 
 
     # From the Airy stress function we another the solution inside a circular domain which does depend on the radius r: 

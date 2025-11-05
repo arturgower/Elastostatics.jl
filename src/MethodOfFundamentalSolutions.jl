@@ -6,6 +6,7 @@ export DisplacementType, TractionType, BoundaryData, Elastic, Acoustic
 
 using Accessors
 using LinearAlgebra
+using BlockArrays: mortar
 using StaticArrays: SVector
 using MultipleScattering
 
