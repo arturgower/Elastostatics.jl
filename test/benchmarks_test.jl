@@ -21,7 +21,7 @@
         interior_points = [[0.0, 0.0]]
 
         # WRRRROOONG needs the basis vectors
-        fields = [[σrr(r,θ), σrθ(r,θ)] for θ in θs]
+        fields = [radial_to_cartesian_transform(SVector(r,θ))*[σrr(r,θ), σrθ(r,θ)] for θ in θs]
         BoundaryData(TractionType(); 
             boundary_points = points, 
             fields = fields, 
@@ -52,7 +52,7 @@
      # fs = [field(wave,x,fieldtype) for x in xs];
     fs = map(xs) do x
         r, θ = cartesian_to_radial_coordinates(SVector(x...))
-        [σrr(r,θ), σrθ(r,θ)]
+       radial_to_cartesian_transform(SVector(r,θ))*[σrr(r,θ), σrθ(r,θ)]
     end
 
     field_mat = [[0.0, 0.0] for x in x_vec]
@@ -73,7 +73,7 @@
     normals = [[cos(θ), sin(θ)] for θ in θs]
 
     predict_fields = [field(TractionType(), fsol, points[i], normals[i]) for i in eachindex(points)]
-    fields = [[σrr(r,θ), σrθ(r,θ)] for θ in θs]
+    fields = [radial_to_cartesian_transform(SVector(r,θ))*[σrr(r,θ), σrθ(r,θ)] for θ in θs]
 
     errors = [norm(fields[i] - predict_fields[i]) / norm(fields[i]) for i in eachindex(fields)]
     maximum(errors)
@@ -91,7 +91,7 @@
         points = [[r*cos(θ), r*sin(θ)] for θ in θs]
         outward_normals = [[cos(θ), sin(θ)] for θ in θs]
         interior_points = [[0.0, 0.0]]
-        fields = [[σrr(r,θ), σrθ(r,θ)] for θ in θs]
+        fields = [radial_to_cartesian_transform(SVector(r,θ))*[σrr(r,θ), σrθ(r,θ)] for θ in θs]
         BoundaryData(TractionType(); 
             boundary_points = points, 
             fields = fields, 
@@ -111,7 +111,7 @@
     normals = [[cos(θ), sin(θ)] for θ in θs]
 
     predict_fields = [field(TractionType(), fsol, points[i], normals[i]) for i in eachindex(points)]
-    fields = [[σrr(r,θ), σrθ(r,θ)] for θ in θs]
+    fields = [radial_to_cartesian_transform(SVector(r,θ))*[σrr(r,θ), σrθ(r,θ)] for θ in θs]
 
     errors = [norm(fields[i] - predict_fields[i]) / norm(fields[i]) for i in eachindex(fields)]
     maximum(errors)
