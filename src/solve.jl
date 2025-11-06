@@ -55,18 +55,19 @@ Base.getindex(fr::FieldResults, i::Int) = (fr.x[i], fr.field[i])
 Base.iterate(fr::FieldResults) = length(fr) == 0 ? nothing : ((fr.x[1], fr.field[1]), 1)
 Base.iterate(fr::FieldResults, state) = state >= length(fr) ? nothing : ((fr.x[state+1], fr.field[state+1]), state + 1)
 
-struct FundamentalSolution{Dim,P<:PhysicalMedium{Dim},T<:Real}
+struct FundamentalSolution{Dim,P<:PhysicalMedium{Dim},T,C}
     medium::P
     positions::Vector{SVector{Dim,T}}
-    coefficients::Array{T}
+    coefficients::Vector{C}
 
     function FundamentalSolution(medium::P,
             positions::Vector{<:AbstractVector},
-            coefficients::AbstractArray) where {P<:PhysicalMedium}
+            coefficients::AbstractVector) where {P<:PhysicalMedium}
         
         # Extract dimension information
-        Dim = dimension(medium)
+        Dim = spatial_dimension(medium)
         T = eltype(positions[1])
+        C = eltype(coefficients)
         
         # Validate dimensions
         if !all(p -> length(p) == Dim, positions)
@@ -83,38 +84,45 @@ struct FundamentalSolution{Dim,P<:PhysicalMedium{Dim},T<:Real}
 
         # Convert inputs to proper types
         pos_converted = convert(Vector{SVector{Dim,T}}, positions)
+        coef_converted = convert(Vector{C}, coefficients)
 
-        return new{Dim,P,T}(medium, pos_converted, coefficients)
+        return new{Dim,P,T,C}(medium, pos_converted, coef_converted)
     end
 end
 
-function FundamentalSolution(medium::P, bd::BoundaryData{F,Dim}; tol = 1e-5) where {P <: PhysicalMedium, F <: FieldType, Dim}
 
-    positions = source_positions(bd)
+function FundamentalSolution(medium::P, bd::BoundaryData{F,Dim}; 
+        source_positions = source_positions(bd), tol = 1e-8
+    ) where {P <: PhysicalMedium, F <: FieldType, Dim}
+
+    xs = source_positions
     
     Ms = [
-        greens(medium, F, bd.boundary_points[i] - x, bd.outward_normals[i])    
-    for i in eachindex(bd.boundary_points), x in positions]
+        greens(bd.fieldtype, medium, bd.boundary_points[i] - x, bd.outward_normals[i])    
+    for i in eachindex(bd.boundary_points), x in xs]
+    M = mortar(Ms)
 
     forcing = vcat(bd.fields...)
 
-    Matrix(mortar(Ms))
+    # Tikinov solution
+    λ = tol * norm(forcing) /  maximum(size(M))
+    bigM = [M; sqrt(λ) * I];
+    coes = bigM \ [forcing; zeros(size(M)[2])]
 
-    # δ = method.regularisation_parameter
-            # bigA = [A; sqrt(δ) * I];
-            # x = bigA \ [b; zeros(size(A)[2])]
+    println("Solved the boundary data with a relative residual of $(norm(M * coes - forcing) / norm(forcing)) with a tolerance of $tol")
 
-            # condition matrix
-    SM = diagm([4.0 / sum(abs.(BB[:,j])) for j in 1:size(BB,2)])
-    BBSM = BB * SM
+    return FundamentalSolution(medium, xs, coes)
+end
 
-    # coes = M \ forcing;
+solve(medium::P, bd::BoundaryData; kws) where P <: PhysicalMedium = FundamentalSolution(medium, bd; kws...)
 
-    # Tikinov
-    δ = sqrt(tol * norm(forcing) /  maximum(size(M)))
-    bigM = [M; sqrt(δ) * I];
-    x = bigA \ [forcing; zeros(size(A)[2])]
+function field(field_type::F, fsol::FundamentalSolution, x::AbstractVector, outward_normal::AbstractVector = zeros(typeof(x))) where F <: FieldType
 
-    mortar(Ms)
+    outward_normal = SVector(outward_normal...) ./ norm(outward_normal)
+    x = SVector(x...)
+    Gs = [
+        greens(field_type, fsol.medium, x - p, outward_normal) 
+    for p in fsol.positions]
 
+    return hcat(Gs...) * fsol.coefficients[:]
 end

@@ -27,6 +27,7 @@ Notes
 - It is expected that `length(points) == length(fields)` and that entries are aligned by index.
 """
 struct BoundaryData{F <: FieldType, Dim, FieldDim} <: Shape{Dim}
+    fieldtype::F
     boundary_points::Vector{SVector{Dim,Float64}}
     fields::Vector{SVector{FieldDim,Float64}}
     outward_normals::Vector{SVector{Dim,Float64}}
@@ -45,34 +46,7 @@ struct BoundaryData{F <: FieldType, Dim, FieldDim} <: Shape{Dim}
         # All outward normals should have unit length
         outward_normals = [n / norm(n) for n in outward_normals]
 
-        new{F,Dim,FieldDim}(boundary_points, fields, outward_normals, interior_points)
-    end
-end
-
-"""
-    source_positions(cloud::BoundaryData; α=1.0)
-
-Return source positions for MFS from some `BoundaryData`.
-
-- α: scale factor for the distance of the source from the boundary d = α * h, where h is the average distance between consecutive points on the boundary.
-"""
-function source_positions(cloud::BoundaryData; α = 1.0) 
-
-    points = cloud.boundary_points 
-    len = points |> length
-    
-    # Note this could be calculated at the same time as the outward normals. But that would make the code quite ugly!
-    # Sample just a few number of points to approximate the distance between neighbours
-    sampled_rng = LinRange(1,len, min(6,len)) .|> round .|> Int
-    neighbors_dists = map(points[sampled_rng]) do p 
-        dists = [sum((p - q) .^2) for q in points]
-        idx = sortperm(dists)[2:min(3, len)]
-        mean(dists[idx])
-    end
-    source_distance = mean(neighbors_dists) * α
-    
-    return map(cloud.boundary_points |> eachindex) do i
-        p = cloud.boundary_points[i] + cloud.outward_normals[i] .* source_distance 
+        new{F,Dim,FieldDim}(field_type, boundary_points, fields, outward_normals, interior_points)
     end
 end
 
@@ -174,4 +148,31 @@ function outward_normals(boundary_points, interior_points)
     # neighbour_distance = mean(neighbour_distances) - std(neighbour_distances) / 2
     # return normals, neighbour_distance
     return normals
+end
+
+"""
+    source_positions(cloud::BoundaryData; α=1.0)
+
+Return source positions for MFS from some `BoundaryData`.
+
+- α: scale factor for the distance of the source from the boundary d = α * h, where h is the average distance between consecutive points on the boundary.
+"""
+function source_positions(cloud::BoundaryData; α = 1.0) 
+
+    points = cloud.boundary_points 
+    len = points |> length
+    
+    # Note this could be calculated at the same time as the outward normals. But that would make the code quite ugly!
+    # Sample just a few number of points to approximate the distance between neighbours
+    sampled_rng = LinRange(1,len, min(6,len)) .|> round .|> Int
+    neighbors_dists = map(points[sampled_rng]) do p 
+        dists = [norm(p - q) for q in points]
+        idx = sortperm(dists)[2:min(3, len)]
+        mean(dists[idx])
+    end
+    source_distance = mean(neighbors_dists) * α
+    
+    return map(cloud.boundary_points |> eachindex) do i
+        p = cloud.boundary_points[i] + cloud.outward_normals[i] .* source_distance 
+    end
 end
