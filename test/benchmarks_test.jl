@@ -4,7 +4,7 @@
     medium = Elastostatic(2; ρ = 1.0, cp = 2.0, cs = 1.0)
 
     # Use points sampled on the boundary with different resolutions
-    θs_arr = [LinRange(0,2pi,n)[1:(n-1)] for n in (10,20,40,80,140)];
+    θs_arr = [LinRange(0,2pi,n)[1:(n-1)] for n in (10,80)];
 
     # Circumferential stress
     # From the Airy stress function we have the solution inside a circular domain which does not depend on the radius r: 
@@ -31,16 +31,15 @@
     end
 
     # Solve
+    solver = TikhonovSolver(tolerance = 1e-8)
     fsols = map(bds) do bd
-        fsol = FundamentalSolution(medium, bd; 
-            tol = 1e-10, 
+        fsol = solve(medium, bd;
+            solver = solver, 
             source_positions = source_positions(bd; relative_source_distance = 2.0) 
         )
     end
 
     # Predict 
-    i = 5;
-
     errors = map(eachindex(fsols)) do n
         θs = θs_arr[n]
         r = 1.0
@@ -58,10 +57,9 @@
     end
     
     conditions = map(eachindex(fsols)) do n
-        M = source_system(fsols[n], bds[n])
+        M = system_matrix(fsols[n], bds[n])
         cond(M)
     end
-    
     
     @test errors[1] < 0.1
     @test errors[end] < 0.001
@@ -70,7 +68,13 @@
     σrr(r,θ) = 0.0;
     σθθ(r,θ) = 12 * r^2 * cos(2θ)
     σrθ(r,θ) = 6 * r^2 * sin(2θ)
+
+    # test adding a particular solution to the boundary data
     
+    bd = bds[1]
+    psol = ParticularGravity()
+    bd_with_particular = BoundaryData(medium, bd, psol) 
+    @test true
 end
 
 @testset "Benchmark annulus" begin

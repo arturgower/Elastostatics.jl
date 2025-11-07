@@ -104,7 +104,7 @@ medium = Elastostatic(2; ρ = 1.0, cp = 2.0, cs = 1.0)
     plot!(fsol, xlims = (-1.6,1.6), ylims = (-1.6,1.6))
     plot!(bd)
     
-    M = source_system(fsol, bd)
+    M = system_matrix(fsol, bd)
     cond(M)
     svdM = svd(M)
     svdM.S[end-6:end]

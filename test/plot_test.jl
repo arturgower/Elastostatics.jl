@@ -15,7 +15,12 @@ is_key_supported(::Any...) = true
         bs = [[0.0,0.0], [1.0,0.0], [0.0,1.0]]
         ns = [[1.0,0.0], [0.0,1.0],[-1.0,-1.0]]
         is = [[0.5,0.5]]
-        cloud = PointCloud(bs, outward_normals=ns, interior_points=is)
+
+        cloud = BoundaryData(DisplacementType(); 
+            boundary_points = bs,
+            outward_normals=ns,
+            interior_points=is
+        )
         
         # Test boundary points series
         plt = RecipesBase.apply_recipe(Dict{Symbol,Any}(), cloud)[1]
@@ -24,7 +29,7 @@ is_key_supported(::Any...) = true
         @test boundary_series[:label] == "Boundary points"
         
         # Test normals (quiver) series
-        plt = RecipesBase.apply_recipe(Dict{Symbol,Any}(), cloud)[2]
+        plt = RecipesBase.apply_recipe(Dict{Symbol,Any}(), cloud)[3]
         normal_series = plt.plotattributes
         @test normal_series[:seriestype] == :quiver
     end

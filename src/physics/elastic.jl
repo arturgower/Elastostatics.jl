@@ -27,6 +27,12 @@ end
 
 struct DisplacementType <: FieldType end
 struct TractionType <: FieldType end
+struct ParticularGravity{T} <: ParticularSolution 
+    g::T
+    function ParticularGravity(; g::T = 9.81) where T
+        new{T}(g)
+    end
+end
 
 function greens(tractiontype::TractionType, medium::Elastostatic{2,T}, x::SVector{2,T}, outward_normal::SVector{2,T}) where T
 
@@ -59,4 +65,20 @@ function greens(displacetype::DisplacementType, medium::Elastostatic{2,T},x::SVe
 
     U = U ./ (8pi*μ*(1-ν))
     return U
+end
+
+function particular_solution(medium::Elastostatic{2,T}, bd::BoundaryData{TractionType,2}, psol::ParticularGravity) where T
+
+    return map(eachindex(bd.boundary_points)) do i
+        σyy = -medium.ρ*psol.g*bd.boundary_points[i][2]
+        SVector(zero(T),σyy * bd.outward_normals[i][2])
+    end
+end
+
+function particular_solution(medium::Elastostatic{2,T}, bd::BoundaryData{TractionType,3}, psol::ParticularGravity) where T
+
+    return map(eachindex(bd.boundary_points)) do i
+        σzz = -medium.ρ*psol.g*bd.boundary_points[i][3]
+        SVector(zero(T), zero(T), σzz * bd.outward_normals[i][3])
+    end
 end
