@@ -46,7 +46,7 @@ using MethodOfFundamentalSolutions
     plot!(fsol, xlims = (-1.6,1.6), ylims = (-1.6,1.6))
     plot!(bd)
     
-    M = source_system(fsol, bd)
+    M = system_matrix(fsol, bd)
     cond(M)
     svdM = svd(M)
     svdM.S[end-6:end]

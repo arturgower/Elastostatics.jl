@@ -18,8 +18,9 @@ using RecipesBase
 export BoundaryData, outward_normals, points_in_shape
 include("boundarydata.jl")
 
-export FieldResult, greens, field, source_positions
-export source_system, FundamentalSolution
+export FieldResult, FundamentalSolution
+export greens, field, source_positions
+export solve, TikhonovSolver, system_matrix
 include("solve.jl")
 
 export DisplacementType, TractionType, Elastostatic, Acoustic

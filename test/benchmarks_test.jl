@@ -31,9 +31,10 @@
     end
 
     # Solve
+    solver = TikhonovSolver(tolerance = 1e-8)
     fsols = map(bds) do bd
-        fsol = FundamentalSolution(medium, bd; 
-            tol = 1e-10, 
+        fsol = solve(medium, bd;
+            solver = solver, 
             source_positions = source_positions(bd; relative_source_distance = 2.0) 
         )
     end
@@ -58,10 +59,9 @@
     end
     
     conditions = map(eachindex(fsols)) do n
-        M = source_system(fsols[n], bds[n])
+        M = system_matrix(fsols[n], bds[n])
         cond(M)
     end
-    
     
     @test errors[1] < 0.1
     @test errors[end] < 0.001
