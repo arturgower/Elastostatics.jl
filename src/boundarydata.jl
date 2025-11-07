@@ -99,14 +99,23 @@ function issubset(box::Box, cloud::BoundaryData)
 end
 
 
-function outward_normals!(cloud::BoundaryData) 
-    ns, dist = outward_normals_and_neighbour_distance(cloud.boundary_points, cloud.interior_points)
-    cloud.outward_normals[:] = ns
+# function outward_normals(bd::BoundaryData)
 
-    return cloud
-end
+#     ns = outward_normals(bd.boundary_points, bd.interior_points)
 
-function outward_normals(boundary_points, interior_points)
+#     positions = map(bd.boundary_points |> eachindex) do i
+#         bd.boundary_points[i] + bd.outward_normals[i] .* source_distance 
+#     end
+
+#     return cloud
+# end
+
+function outward_normals(boundary_points, interior_points; 
+        number_of_neighbours = min(2 * length(boundary_points[1]), max(1, length(boundary_points)-1))
+    )
+    
+    # number of neighbors to use (at least Dim+1, at most n-1)
+    k = number_of_neighbours
 
     pts = boundary_points
     n = length(pts)
@@ -116,8 +125,6 @@ function outward_normals(boundary_points, interior_points)
     Dim = length(pts[1])
     T = eltype(pts[1])
 
-    # number of neighbors to use (at least Dim+1, at most n-1)
-    k = min(2Dim, max(1, n-1))
 
     normals = Vector{typeof(pts[1])}(undef, n)
     # neighbour_distances = Vector{T}(undef, n)

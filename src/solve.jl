@@ -154,11 +154,9 @@ system_matrix(fsol::FundamentalSolution, bd::BoundaryData) = system_matrix(fsol.
 
 function system_matrix(source_positions::Vector, medium::P, bd::BoundaryData{F,Dim}) where {P <: PhysicalMedium, F <: FieldType, Dim}
 
-    xs = source_positions
-    
     Ms = [
         greens(bd.fieldtype, medium, bd.boundary_points[i] - x, bd.outward_normals[i])    
-    for i in eachindex(bd.boundary_points), x in xs]
+    for i in eachindex(bd.boundary_points), x in source_positions]
 
     return mortar(Ms)
 end
@@ -230,7 +228,10 @@ function source_positions(cloud::BoundaryData; relative_source_distance = 2.0)
     end
     source_distance = mean(neighbors_dists) * relative_source_distance
     
-    return map(cloud.boundary_points |> eachindex) do i
-        p = cloud.boundary_points[i] + cloud.outward_normals[i] .* source_distance 
+    positions = map(cloud.boundary_points |> eachindex) do i
+        cloud.boundary_points[i] + cloud.outward_normals[i] .* source_distance 
     end
+
+    # Occasionally the normal direction is wrong. In which case, do not add a source inside the body!
+    return filter(p -> p ∉ cloud, positions)
 end
