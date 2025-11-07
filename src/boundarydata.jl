@@ -6,6 +6,13 @@ A type used to specify what type of physical field, such as traction or displace
 abstract type FieldType end
 
 """
+    ParticularSolution
+
+A type used to specify the type of particular solution to add to the boundary data.
+"""
+abstract type ParticularSolution end
+
+"""
     BoundaryData(field_type::F; boundary_points = , fields = , interior_points = , outward_normals = ) where {F <: FieldType}
 
 A [`Shape`](@ref) defined by a set of points on the boundary with no particular order in the data. 
@@ -32,28 +39,35 @@ struct BoundaryData{F <: FieldType, Dim, FieldDim} <: Shape{Dim}
     fields::Vector{SVector{FieldDim,Float64}}
     outward_normals::Vector{SVector{Dim,Float64}}
     interior_points::Vector{SVector{Dim,Float64}}
+end
 
-    function BoundaryData(field_type::F; 
-            boundary_points::Vector{V} = [zeros(Float64,2)], 
-            fields::Vector{FV} = [p .* 0.0 for p in boundary_points],
-            interior_points::Vector{V} = [mean(boundary_points)],
-            outward_normals::Vector{V} = outward_normals(boundary_points,interior_points),
-        ) where {F <: FieldType, V <: AbstractVector, FV <: AbstractVector}
+function BoundaryData(field_type::F; 
+        boundary_points::Vector{V} = [zeros(Float64,2)], 
+        fields::Vector{FV} = [p .* 0.0 for p in boundary_points],
+        interior_points::Vector{V} = [mean(boundary_points)],
+        outward_normals::Vector{V} = outward_normals(boundary_points,interior_points),
+    ) where {F <: FieldType, V <: AbstractVector, FV <: AbstractVector}
 
-        Dim = length(boundary_points[1])
-        FieldDim = length(fields[1])
+    Dim = length(boundary_points[1])
+    FieldDim = length(fields[1])
 
-        # All outward normals should have unit length
-        outward_normals = [n / norm(n) for n in outward_normals]
+    # All outward normals should have unit length
+    outward_normals = [n / norm(n) for n in outward_normals]
 
-        new{F,Dim,FieldDim}(field_type, boundary_points, fields, outward_normals, interior_points)
-    end
+    BoundaryData{F,Dim,FieldDim}(field_type, boundary_points, fields, outward_normals, interior_points)
 end
 
 import MultipleScattering: name
 name(shape::BoundaryData) = "BoundaryData"
 
 bounding_box(cloud::BoundaryData) = Box(cloud.boundary_points)
+
+function BoundaryData(medium::Ph, bd::BoundaryData, psol::P) where {Ph <: PhysicalMedium,P <: ParticularSolution}
+    fs = particular_solution(medium,bd,psol)
+   
+    bd_particular = @set bd.fields = bd.fields + fs
+    return bd_particular
+end
 
 import Base.in
 function in(x::AbstractVector, cloud::BoundaryData)::Bool

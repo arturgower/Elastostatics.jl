@@ -16,6 +16,7 @@ using RecipesBase
 
 
 export BoundaryData, outward_normals, points_in_shape
+export particular_solution
 include("boundarydata.jl")
 
 export FieldResult, FundamentalSolution
@@ -24,6 +25,7 @@ export solve, TikhonovSolver, system_matrix
 include("solve.jl")
 
 export DisplacementType, TractionType, Elastostatic, Acoustic
+export ParticularGravity
 include("physics/elastic.jl")
 include("../plot/plot.jl")
 
