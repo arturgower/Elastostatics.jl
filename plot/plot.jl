@@ -78,7 +78,7 @@ end
 
 
 # Plot the result in space (across all x) for a specific angular frequency
-@recipe function plot(res::FieldResults;
+@recipe function plot(res::FieldResult;
         region_shape = :empty, field_apply := first)
 
     x = [x[1] for x in res.x]

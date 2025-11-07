@@ -1,5 +1,5 @@
 """
-    FieldResults{T<:Real,Dim,FieldDim}
+    FieldResult{T<:Real,Dim,FieldDim}
 
 Struct to hold results of simulations evaluated over different spatial positions.
 
@@ -17,16 +17,16 @@ Struct to hold results of simulations evaluated over different spatial positions
 # Create field results for a 2D problem with complex scalar field
 positions = [SVector(0.0, 0.0), SVector(1.0, 0.0)]
 fields = [SVector(1.0 + 0.0im), SVector(0.0 + 1.0im)]
-results = FieldResults(positions, fields)
+results = FieldResult(positions, fields)
 ```
 """
-struct FieldResults{Dim,FieldDim,T<:Real}
+struct FieldResult{Dim,FieldDim,T<:Real}
     "Spatial positions where field is evaluated"
     x::Vector{SVector{Dim,T}}
     "Field values at corresponding positions"
     field::Vector{SVector{FieldDim,T}}
 
-    function FieldResults(x::AbstractVector{<:AbstractVector}, field::AbstractVector{<:AbstractVector})
+    function FieldResult(x::AbstractVector{<:AbstractVector}, field::AbstractVector{<:AbstractVector})
         T = eltype(x[1])
         Dim = length(x[1])
         FieldDim = length(field[1])
@@ -47,13 +47,33 @@ struct FieldResults{Dim,FieldDim,T<:Real}
     end
 end
 
-field(fr::FieldResults) = fr.field
+field(fr::FieldResult) = fr.field
 
 # Interface implementations
-Base.length(fr::FieldResults) = length(fr.x)
-Base.getindex(fr::FieldResults, i::Int) = (fr.x[i], fr.field[i])
-Base.iterate(fr::FieldResults) = length(fr) == 0 ? nothing : ((fr.x[1], fr.field[1]), 1)
-Base.iterate(fr::FieldResults, state) = state >= length(fr) ? nothing : ((fr.x[state+1], fr.field[state+1]), state + 1)
+import Base.(+)
+import Base.(-)
+function +(fr1::FieldResult{D,F}, fr2::FieldResult{D,F}) where {D,F}
+    # lengths must match
+    if length(fr1.x) != length(fr2.x)
+        throw(ArgumentError("FieldResult must have the same number of positions"))
+    end
+
+    # positions must match elementwise
+    if !all(t -> t[1] == t[2], zip(fr1.x, fr2.x))
+        throw(ArgumentError("Spatial positions `x` are not compatible between the two FieldResult"))
+    end
+
+    # subtract field values elementwise
+    newfields = [fr1.field[i] + fr2.field[i] for i in eachindex(fr1.field)]
+
+    return FieldResult(fr1.x, newfields)
+end
+-(fr1::FieldResult, fr2::FieldResult) = fr1 + FieldResult(fr2.x, - fr2.field)
+
+Base.length(fr::FieldResult) = length(fr.x)
+Base.getindex(fr::FieldResult, i::Int) = (fr.x[i], fr.field[i])
+Base.iterate(fr::FieldResult) = length(fr) == 0 ? nothing : ((fr.x[1], fr.field[1]), 1)
+Base.iterate(fr::FieldResult, state) = state >= length(fr) ? nothing : ((fr.x[state+1], fr.field[state+1]), state + 1)
 
 struct FundamentalSolution{Dim,P<:PhysicalMedium{Dim},T,C}
     medium::P
@@ -90,6 +110,19 @@ struct FundamentalSolution{Dim,P<:PhysicalMedium{Dim},T,C}
     end
 end
 
+source_system(fsol::FundamentalSolution, bd::BoundaryData) = source_system(fsol.positions, fsol.medium, bd)
+
+function source_system(source_positions::Vector, medium::P, bd::BoundaryData{F,Dim}) where {P <: PhysicalMedium, F <: FieldType, Dim}
+
+    xs = source_positions
+    
+    Ms = [
+        greens(bd.fieldtype, medium, bd.boundary_points[i] - x, bd.outward_normals[i])    
+    for i in eachindex(bd.boundary_points), x in xs]
+
+    return mortar(Ms)
+end
+
 
 function FundamentalSolution(medium::P, bd::BoundaryData{F,Dim}; 
         source_positions = source_positions(bd), tol = 1e-8
@@ -101,6 +134,8 @@ function FundamentalSolution(medium::P, bd::BoundaryData{F,Dim};
         greens(bd.fieldtype, medium, bd.boundary_points[i] - x, bd.outward_normals[i])    
     for i in eachindex(bd.boundary_points), x in xs]
     M = mortar(Ms)
+
+    M = source_system(source_positions, medium, bd)
 
     forcing = vcat(bd.fields...)
 
@@ -125,4 +160,32 @@ function field(field_type::F, fsol::FundamentalSolution, x::AbstractVector, outw
     for p in fsol.positions]
 
     return hcat(Gs...) * fsol.coefficients[:]
+end
+
+
+"""
+    source_positions(cloud::BoundaryData; α=1.0)
+
+Return source positions for MFS from some `BoundaryData`.
+
+- α: scale factor for the distance of the source from the boundary d = α * h, where h is the average distance between consecutive points on the boundary.
+"""
+function source_positions(cloud::BoundaryData; relative_source_distance = 2.0) 
+
+    points = cloud.boundary_points 
+    len = points |> length
+    
+    # Note this could be calculated at the same time as the outward normals. But that would make the code quite ugly!
+    # Sample just a few number of points to approximate the distance between neighbours
+    sampled_rng = LinRange(1,len, min(6,len)) .|> round .|> Int
+    neighbors_dists = map(points[sampled_rng]) do p 
+        dists = [norm(p - q) for q in points]
+        idx = sortperm(dists)[2:min(3, len)]
+        mean(dists[idx])
+    end
+    source_distance = mean(neighbors_dists) * relative_source_distance
+    
+    return map(cloud.boundary_points |> eachindex) do i
+        p = cloud.boundary_points[i] + cloud.outward_normals[i] .* source_distance 
+    end
 end

@@ -29,12 +29,12 @@ is_key_supported(::Any...) = true
         @test normal_series[:seriestype] == :quiver
     end
 
-    # Test FieldResults recipe
-    @testset "FieldResults recipe" begin
+    # Test FieldResult recipe
+    @testset "FieldResult recipe" begin
         # Create a simple 2D field result
         x = [[Float64(i), Float64(j)] for i in 0:1, j in 0:1][:]
         fs = [[1.0] for _ in 1:length(x)]
-        res = FieldResults(x, fs)
+        res = FieldResult(x, fs)
 
         # Apply the recipe
         plt = RecipesBase.apply_recipe(Dict{Symbol,Any}(), res)[1]

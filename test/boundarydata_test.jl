@@ -47,7 +47,7 @@
     fs = [[1.0, 1.0] for x in xs];
     field_mat[inds] = fs
 
-    res = FieldResults(x_vec, field_mat[:])
+    res = FieldResult(x_vec, field_mat[:])
 
     # using Plots
     # plot(res, clims = (-1,1))
