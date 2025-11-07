@@ -1,19 +1,77 @@
 using MethodOfFundamentalSolutions
-
+using MultipleScattering
+using StaticArrays:SVector
+using LinearAlgebra
+using Statistics
+using BlockArrays
+medium = Elastostatic(2; ρ = 1.0, cp = 2.0, cs = 1.0)
+    θs_arr = [LinRange(0,2pi,n)[1:(n-1)] for n in (10,20,40,80,140)];
+    i=5
     θs = θs_arr[i]
     r = 1.3
     r = 1.0
     points = [[r*cos(θ), r*sin(θ)] for θ in θs]
     normals = [[cos(θ), sin(θ)] for θ in θs]
 
-    predict_fields = [field(TractionType(), fsol, points[i], normals[i]) for i in eachindex(points)]
-    fields = [radial_to_cartesian_transform([r,θ])*[σrr(r,θ), σrθ(r,θ)] for θ in θs]
+       # Circumferential stress
+    # From the Airy stress function we have the solution inside a circular domain which does not depend on the radius r: 
+    σrr(r, θ) = -2 * cos(2θ)
+    σθθ(r, θ) = 2 * cos(2θ)
+    σrθ(r, θ) = 2 * sin(2θ)
+    bds = map(θs_arr) do θs
+        points = [[r*cos(θ), r*sin(θ)] for θ in θs]
+        outward_normals = [[cos(θ), sin(θ)] for θ in θs]
+        interior_points = [[0.0, 0.0]]
 
+        # WRRRROOONG needs the basis vectors
+        fields = [radial_to_cartesian_transform(SVector(r,θ))*[σrr(r,θ), σrθ(r,θ)] for θ in θs]
+        BoundaryData(TractionType(); 
+            boundary_points = points, 
+            fields = fields, 
+            outward_normals = outward_normals,
+            interior_points = interior_points
+        )
+    end
+    n=i
+    #Nsources=length(bds[n].boundary_points)
+    rsource=1.0451989236591015
+    θsource=θs_arr[n-1]
+    source_pos=[ [rsource*cos(θ), rsource*sin(θ)] for θ in θsource ]
+
+    # Solve
+    fsols = map(bds) do bd
+        fsol = FundamentalSolution(medium, bd; 
+            tol = 1e-10, 
+         #   source_positions = source_positions(bd; relative_source_distance = 1.0) 
+            source_positions = source_pos 
+        )
+    end
+
+    
+    
+    fsol=fsols[n]
+    #f
+    predict_fields = [field(TractionType(), fsol, points[i], normals[i]) for i in eachindex(points)]
+    fields = [radial_to_cartesian_transform(SVector(r,θ))*[σrr(r,θ), σrθ(r,θ)] for θ in θs]
+
+    Msystem=source_system(fsol,bds[n])
+
+    Msystem=Matrix(Msystem)
+    
+    F=svd(Msystem)
+    U=F.U
+    S=F.S
+    Vt=F.Vt
+    
+    S
+    
+    f=vcat(bds[n].fields...)
+    
     errors = [norm(fields[i] - predict_fields[i]) for i in eachindex(fields)]
     errors = errors ./ mean([norm(f) for f in fields])
     
     maximum(errors)
-
+    bd=bds[n]
     using Plots
     x_vec, inds = points_in_shape(bd; res = 15)
     x_vec, inds = points_in_shape(bd; res = 25)
@@ -31,7 +89,7 @@ using MethodOfFundamentalSolutions
      # fs = [field(wave,x,fieldtype) for x in xs];
     fs = map(xs) do x
         r, θ = cartesian_to_radial_coordinates(x)
-       radial_to_cartesian_transform([r,θ])*[σrr(r,θ), σrθ(r,θ)]
+       radial_to_cartesian_transform(SVector(r,θ))*[σrr(r,θ), σrθ(r,θ)]
     end
 
     field_mat = [[0.0, 0.0] for x in x_vec]
