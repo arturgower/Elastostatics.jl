@@ -80,12 +80,13 @@ function in(x::AbstractVector, cloud::BoundaryData)::Bool
     vec = (x - q) ./ norm(x - q)
 
     # q + t .* vec == p
-    dist_from_middle = map(cloud.boundary_points) do p
+    dist_from_line = map(cloud.boundary_points) do p
         t = dot(vec, p - q)
+        t = (t < 0) ? 0.0 : t
         p_on_line = q + t .* vec
-        - norm(p_on_line - p) * sign(t)
+        norm(p_on_line - p)
     end
-    p = cloud.boundary_points[argmin(dist_from_middle)]
+    p = cloud.boundary_points[argmin(dist_from_line)]
 
     inside = norm(x - q) < norm(p - q) ? true : false
     return inside
