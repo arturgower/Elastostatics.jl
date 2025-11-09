@@ -70,15 +70,19 @@ function BoundaryData(medium::Ph, bd::BoundaryData, psol::P) where {Ph <: Physic
 end
 
 import Base.in
+
+import Base.in
 function in(x::AbstractVector, cloud::BoundaryData)::Bool
 
-    # find nearest point p on the boundary to x. And nearest interior point q to x. If |q - x| < |q - p| then the point is inside the body defined by cloud 
-    dists = [sum((x - p) .^2) for p in cloud.boundary_points];
-    p = cloud.boundary_points[argmin(dists)]
-
+    # find nearest interior point q to x. Then find point p on the boundary nearst to being in between q and x. If there is no p inbetween q and x then x is in the interior. In other words:
     dists = [sum((x - p) .^2) for p in cloud.interior_points];
     q = cloud.interior_points[argmin(dists)]
-    
+
+    dist_from_middle = [
+        sum(((x + q) ./ 2 - p) .^2) 
+    for p in cloud.boundary_points];
+    p = cloud.boundary_points[argmin(dist_from_middle)]
+
     inside = norm(x - q) < norm(p - q) ? true : false
     return inside
 end
