@@ -82,8 +82,8 @@ function in(x::AbstractVector, cloud::BoundaryData)::Bool
     # q + t .* vec == p
     dist_from_middle = map(cloud.boundary_points) do p
         t = dot(vec, p - q)
-        q_on_line = q + t .* vec
-        - norm(q_on_line - q) * sign(t)
+        p_on_line = q + t .* vec
+        - norm(p_on_line - p) * sign(t)
     end
     p = cloud.boundary_points[argmin(dist_from_middle)]
 
