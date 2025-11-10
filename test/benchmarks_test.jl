@@ -20,7 +20,6 @@
         outward_normals = [[cos(θ), sin(θ)] for θ in θs]
         interior_points = [[0.0, 0.0]]
 
-        # WRRRROOONG needs the basis vectors
         fields = [radial_to_cartesian_transform([r,θ])*[σrr(r,θ), σrθ(r,θ)] for θ in θs]
         BoundaryData(TractionType(); 
             boundary_points = points, 
