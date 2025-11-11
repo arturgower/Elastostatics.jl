@@ -182,9 +182,9 @@ function solve(solver::TikhonovSolver, medium::P, bd::BoundaryData{F,Dim};
     # Tikinov solution
     sqrtλ = if solver.λ < zero(eltype(solver.λ)) 
         # norm(forcing) / sqrt(tol * size(M,2))
-         norm(M,2) * sqrt(solver.tolerance * size(M,2))
+         norm(M,2) * sqrt(solver.tolerance) / size(M,2)
     else sqrt(solver.λ)
-    end    
+    end
 
     bigM = [M; sqrtλ * I];
     coes = bigM \ [forcing; zeros(size(M)[2])]
