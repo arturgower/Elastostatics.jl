@@ -20,6 +20,8 @@ function interior_points_along_coordinate(points; offset_percent = 0.1,
         push!(bin_indices[b], idx)
     end
 
+    bin_indices = filter(v -> !isempty(v), bin_indices)
+
     interior_points = map(bin_indices) do inds
         mean(points[inds])
     end

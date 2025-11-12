@@ -180,16 +180,16 @@ function solve(solver::TikhonovSolver, medium::P, bd::BoundaryData{F,Dim};
     forcing = vcat(bd.fields...)
 
     # Tikinov solution
+    condM = cond(M)
     sqrtλ = if solver.λ < zero(eltype(solver.λ)) 
-        # norm(forcing) / sqrt(tol * size(M,2))
-         norm(M,2) * sqrt(solver.tolerance) / size(M,2)
+        condM * sqrt(solver.tolerance)
     else sqrt(solver.λ)
     end
 
     bigM = [M; sqrtλ * I];
     coes = bigM \ [forcing; zeros(size(M)[2])]
 
-    println("Solved the boundary data with a relative residual of $(norm(M * coes - forcing) / norm(forcing)) with a tolerance of $(solver.tolerance)")
+    println("Solved the system with condition number:$(condM), and with a relative error of boundary data: $(norm(M * coes - forcing) / norm(forcing)) with a tolerance of $(solver.tolerance)")
 
     return FundamentalSolution(medium, source_positions, coes)
 end
