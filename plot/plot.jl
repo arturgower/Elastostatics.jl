@@ -1,5 +1,5 @@
 # recipe for plotting a PointCloud. Assumes 2D boundary_points 
-@recipe function plot(cloud::BoundaryData)
+@recipe function plot(cloud::BoundaryData; fields = false, outward_normals = true)
     # Set default attributes
     markershape --> :circle
     legend --> false
@@ -8,6 +8,7 @@
     bs = cloud.boundary_points
     ns = cloud.outward_normals
     is = cloud.interior_points
+    fs = cloud.fields
 
     # used to determine the length to plot the vectors
     lengthscale = mean([norm(b - mean(bs)) for b in bs])
@@ -16,6 +17,13 @@
     by = [b[2] for b in bs]
     ix = [b[1] for b in is]
     iy = [b[2] for b in is]
+
+    fx = [b[1] for b in fs]
+    fy = [b[2] for b in fs]
+
+    f_lengthscale = mean([norm(f) for f in fs]) > 0 ? mean([norm(f) for f in fs]) : 1.0
+    fx = fx .* (lengthscale/4) ./ (sqrt(2.0) * f_lengthscale)
+    fy = fy .* (lengthscale/4) ./ (sqrt(2.0) * f_lengthscale)
 
     nx = [b[1] for b in ns]
     ny = [b[2] for b in ns]
@@ -43,14 +51,28 @@
         (ix, iy)
     end
 
-    @series begin
-        label --> ""
-        color --> :black
-        seriestype --> :quiver
-        quiver --> (nx, ny)
-        marker = :none           # remove marker symbol at arrow tips
-        markersize --> 0.0          # fallback to ensure no marker is drawn
-        (bx, by)
+    if outward_normals
+        @series begin
+            label --> ""
+            color --> :black
+            seriestype --> :quiver
+            quiver --> (nx, ny)
+            marker = :none           # remove marker symbol at arrow tips
+            markersize --> 0.0          # fallback to ensure no marker is drawn
+            (bx, by)
+        end
+    end
+
+    if fields
+        @series begin
+            label --> ""
+            color --> :green
+            seriestype --> :quiver
+            quiver --> (fx, fy)
+            marker = :none           # remove marker symbol at arrow tips
+            markersize --> 0.0          # fallback to ensure no marker is drawn
+            (bx, by)
+        end
     end
 end
 

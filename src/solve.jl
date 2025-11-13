@@ -22,7 +22,7 @@ x = \\argmin_x \\|A x - b\\|^2 + \\lambda \\|x\\|^2
 struct TikhonovSolver{T<:Real} <: AbstractSolver
     λ::T
     tolerance::T
-    function TikhonovSolver(; λ::Real = - one(Float64), tolerance::Real = 1e-8)
+    function TikhonovSolver(; λ::Real = - one(Float64), tolerance::Real = 1e-11)
         T = typeof(λ)
         new{T}(λ, tolerance)
     end

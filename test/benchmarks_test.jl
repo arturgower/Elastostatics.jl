@@ -30,13 +30,13 @@
     end
 
     # Solve
-    solver = TikhonovSolver(tolerance = 1e-8)
+    solver = TikhonovSolver(tolerance = 1e-12)
     fsols = map(bds) do bd
         fsol = solve(medium, bd;
             solver = solver, 
             source_positions = source_positions(bd; relative_source_distance = 2.0) 
         )
-    end
+    end;
 
     # Predict 
     errors = map(eachindex(fsols)) do n
