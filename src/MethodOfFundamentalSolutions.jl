@@ -22,12 +22,12 @@ include("boundarydata.jl")
 export interior_points_along_coordinate
 include("utils.jl")
 
-export FieldResult, FundamentalSolution
-include("results.jl")
-
-export ProblemSetup, greens, field, source_positions
+export ProblemSetup, greens, source_positions
 export solve, TikhonovSolver, system_matrix
 include("solve.jl")
+
+export FieldResult, FundamentalSolution, field
+include("results.jl")
 
 export DisplacementType, TractionType, Elastostatic, Acoustic
 export ParticularGravity

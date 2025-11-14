@@ -58,8 +58,6 @@ function ProblemSetup(medium::P, bd::BD;
     return ProblemSetup{S,Dim,P,PS,BD}(solver, medium, bd, particular_solution, source_positions)
 end
 
-system_matrix(fsol::FundamentalSolution, bd::BoundaryData) = system_matrix(fsol.positions, fsol.medium, bd)
-
 system_matrix(problem::ProblemSetup) = system_matrix(problem.source_positions, problem.medium, problem.boundary_data)
 
 function system_matrix(source_positions::Vector{SVector{Dim,Float64}}, medium::P, bd::BoundaryData) where {Dim,P<:PhysicalMedium{Dim}}
@@ -100,20 +98,8 @@ function solve(problem::ProblemSetup{TikhonovSolver{T}}) where T
 
     println("Solved the system with condition number:$(condM), and with a relative error of boundary data: $(norm(M * coes - forcing) / norm(forcing)) with a tolerance of $(problem.solver.tolerance)")
 
-    return FundamentalSolution(medium, problem.source_positions, coes)
+    return FundamentalSolution(problem.medium, problem.source_positions, coes)
 end
-
-function field(field_type::F, fsol::FundamentalSolution, x::AbstractVector, outward_normal::AbstractVector = zeros(typeof(x))) where F <: FieldType
-
-    outward_normal = SVector(outward_normal...) ./ norm(outward_normal)
-    x = SVector(x...)
-    Gs = [
-        greens(field_type, fsol.medium, x - p, outward_normal) 
-    for p in fsol.positions]
-
-    return hcat(Gs...) * fsol.coefficients[:]
-end
-
 
 """
     source_positions(cloud::BoundaryData; α=1.0)

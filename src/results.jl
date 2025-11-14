@@ -1,4 +1,3 @@
-
 """
     FundamentalSolution{Dim,P<:PhysicalMedium{Dim},T,C}
 
@@ -42,6 +41,17 @@ struct FundamentalSolution{Dim,P<:PhysicalMedium{Dim},T,C}
 
         return new{Dim,P,T,C}(medium, pos_converted, coef_converted)
     end
+end
+
+function field(field_type::F, fsol::FundamentalSolution, x::AbstractVector, outward_normal::AbstractVector = zeros(typeof(x))) where F <: FieldType
+
+    outward_normal = SVector(outward_normal...) ./ norm(outward_normal)
+    x = SVector(x...)
+    Gs = [
+        greens(field_type, fsol.medium, x - p, outward_normal) 
+    for p in fsol.positions]
+
+    return hcat(Gs...) * fsol.coefficients[:]
 end
 
 """
