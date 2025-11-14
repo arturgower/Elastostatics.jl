@@ -8,14 +8,16 @@ A type representing a fundamental solution. The fundamental solution is construc
 - `positions::Vector{SVector{Dim,T}}`: Vector of positions of the point sources in `Dim`-dimensional space
 - `coefficients::Vector{C}`: Vector of coefficients for the point sources
 """
-struct FundamentalSolution{Dim,P<:PhysicalMedium{Dim},T,C}
+struct FundamentalSolution{Dim,P<:PhysicalMedium{Dim}, PS <:ParticularSolution, T,C}
     medium::P
+    particular_solution::PS
     positions::Vector{SVector{Dim,T}}
     coefficients::Vector{C}
 
     function FundamentalSolution(medium::P,
+            particular_solution::PS,
             positions::Vector{<:AbstractVector},
-            coefficients::AbstractVector) where {P<:PhysicalMedium}
+            coefficients::AbstractVector) where {P<:PhysicalMedium, PS <: ParticularSolution}
         
         # Extract dimension information
         Dim = spatial_dimension(medium)
@@ -39,8 +41,19 @@ struct FundamentalSolution{Dim,P<:PhysicalMedium{Dim},T,C}
         pos_converted = convert(Vector{SVector{Dim,T}}, positions)
         coef_converted = convert(Vector{C}, coefficients)
 
-        return new{Dim,P,T,C}(medium, pos_converted, coef_converted)
+        return new{Dim,P,PS,T,C}(medium, particular_solution, pos_converted, coef_converted)
     end
+end
+
+
+function FundamentalSolution(medium::P,
+        positions::Vector{<:AbstractVector},
+        coefficients::AbstractVector; 
+        particular_solution::PS = NoParticularSolution() 
+    ) where {P<:PhysicalMedium, PS <: ParticularSolution}
+    
+
+    return FundamentalSolution(medium, particular_solution, positions, coefficients)
 end
 
 function field(field_type::F, fsol::FundamentalSolution, x::AbstractVector, outward_normal::AbstractVector = zeros(typeof(x))) where F <: FieldType
