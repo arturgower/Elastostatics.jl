@@ -6,13 +6,6 @@ A type used to specify what type of physical field, such as traction or displace
 abstract type FieldType end
 
 """
-    ParticularSolution
-
-A type used to specify the type of particular solution to add to the boundary data.
-"""
-abstract type ParticularSolution end
-
-"""
     BoundaryData(field_type::F; boundary_points = , fields = , interior_points = , outward_normals = ) where {F <: FieldType}
 
 A [`Shape`](@ref) defined by a set of points on the boundary with no particular order in the data. 
@@ -62,12 +55,12 @@ name(shape::BoundaryData) = "BoundaryData"
 
 bounding_box(cloud::BoundaryData) = Box(cloud.boundary_points)
 
-function BoundaryData(medium::Ph, bd::BoundaryData, psol::P) where {Ph <: PhysicalMedium,P <: ParticularSolution}
-    fs = particular_solution(medium,bd,psol)
+# function BoundaryData(medium::Ph, bd::BoundaryData, psol::P) where {Ph <: PhysicalMedium,P <: ParticularSolution}
+#     fs = particular_solution(medium,bd,psol)
    
-    bd_particular = @set bd.fields = bd.fields + fs
-    return bd_particular
-end
+#     bd_particular = @set bd.fields = bd.fields + fs
+#     return bd_particular
+# end
 
 import Base.in
 function in(x::AbstractVector, cloud::BoundaryData)::Bool

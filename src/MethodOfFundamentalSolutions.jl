@@ -23,7 +23,9 @@ export interior_points_along_coordinate
 include("utils.jl")
 
 export FieldResult, FundamentalSolution
-export greens, field, source_positions
+include("results.jl")
+
+export ProblemSetup, greens, field, source_positions
 export solve, TikhonovSolver, system_matrix
 include("solve.jl")
 

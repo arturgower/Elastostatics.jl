@@ -30,13 +30,15 @@
     end
 
     # Solve
-    solver = TikhonovSolver(tolerance = 1e-12)
-    fsols = map(bds) do bd
-        fsol = solve(medium, bd;
-            solver = solver, 
+    solver = TikhonovSolver(tolerance = 1e-12) 
+    
+    problems = map(bds) do bd
+        ProblemSetup(medium, bd; 
+            solver = solver,
             source_positions = source_positions(bd; relative_source_distance = 2.0) 
         )
-    end;
+    end
+    fsols = solve.(problems)
 
     # Predict 
     errors = map(eachindex(fsols)) do n
@@ -55,9 +57,8 @@
         maximum(error)
     end
     
-    conditions = map(eachindex(fsols)) do n
-        M = system_matrix(fsols[n], bds[n])
-        cond(M)
+    conditions = map(problems) do p
+        system_matrix(p) |> cond
     end
     
     @test errors[1] < 0.1
@@ -72,7 +73,7 @@
     
     bd = bds[1]
     psol = ParticularGravity()
-    bd_with_particular = BoundaryData(medium, bd, psol) 
+    # bd_with_particular = BoundaryData(medium, bd, psol) 
     @test true
 end
 

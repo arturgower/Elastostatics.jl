@@ -6,6 +6,15 @@ Abstract type for different solution methods for the Method of Fundamental Solut
 abstract type AbstractSolver end
 
 """
+    ParticularSolution
+
+A type used to specify the type of particular solution to add to the boundary data.
+"""
+abstract type ParticularSolution end
+
+struct NoParticularSolution <: ParticularSolution end
+
+"""
     TikhonovSolver{T<:Real} <: AbstractSolver
 
 Tikhonov regularization solver for MFS.
@@ -28,170 +37,70 @@ struct TikhonovSolver{T<:Real} <: AbstractSolver
     end
 end
 
-"""
-    FundamentalSolution{Dim,P<:PhysicalMedium{Dim},T,C}
-
-A type representing a fundamental solution. The fundamental solution is constructed by placing source points at specified positions outside the domain of interest and determining their coefficients to satisfy boundary conditions. in terms of point sources placed outside the body.
-
-# Fields
-- `medium::P`: Physical medium containing material properties
-- `positions::Vector{SVector{Dim,T}}`: Vector of positions of the point sources in `Dim`-dimensional space
-- `coefficients::Vector{C}`: Vector of coefficients for the point sources
-"""
-struct FundamentalSolution{Dim,P<:PhysicalMedium{Dim},T,C}
+struct ProblemSetup{S <: AbstractSolver, Dim, P<:PhysicalMedium{Dim}, PS <:ParticularSolution, BD <: BoundaryData}
+    solver::S
     medium::P
-    positions::Vector{SVector{Dim,T}}
-    coefficients::Vector{C}
-
-    function FundamentalSolution(medium::P,
-            positions::Vector{<:AbstractVector},
-            coefficients::AbstractVector) where {P<:PhysicalMedium}
-        
-        # Extract dimension information
-        Dim = spatial_dimension(medium)
-        T = eltype(positions[1])
-        C = eltype(coefficients)
-        
-        # Validate dimensions
-        if !all(p -> length(p) == Dim, positions)
-            throw(ArgumentError("All positions must have dimension $Dim"))
-        end
-
-        # Validate coefficients
-        FD = field_dimension(medium)
-        if length(coefficients) != length(positions) * FD 
-            throw(ArgumentError(
-                "Expected $(length(positions) * FD) coefficients but got $(length(coefficients))"
-            ))
-        end
-
-        # Convert inputs to proper types
-        pos_converted = convert(Vector{SVector{Dim,T}}, positions)
-        coef_converted = convert(Vector{C}, coefficients)
-
-        return new{Dim,P,T,C}(medium, pos_converted, coef_converted)
-    end
+    boundary_data::BD
+    particular_solution::PS
+    source_positions::Vector{SVector{Dim,Float64}}
 end
 
-"""
-    FieldResult{T<:Real,Dim,FieldDim}
+function ProblemSetup(medium::P, bd::BD; 
+        solver::S = TikhonovSolver(),
+        particular_solution::PS = NoParticularSolution(),
+        source_positions = source_positions(bd; relative_source_distance = 1.2) 
+    ) where {
+        S <: AbstractSolver, Dim, 
+        P <: PhysicalMedium{Dim}, PS <: ParticularSolution, 
+        BD <: BoundaryData{<:FieldType,Dim}
+    }
 
-Struct to hold results of simulations evaluated over different spatial positions.
-
-# Type Parameters
-- `T`: The numeric type for spatial coordinates (e.g., Float64)
-- `Dim`: Spatial dimension of the problem (typically 2 or 3)
-- `FieldDim`: Dimension of the field values (e.g., 1 for scalar fields, Dim for vector fields)
-
-# Fields
-- `x::Vector{SVector{Dim,T}}`: Vector of spatial positions
-- `field::Vector{SVector{FieldDim,Complex{T}}}`: Vector of field values at corresponding positions
-
-# Examples
-```julia
-# Create field results for a 2D problem with complex scalar field
-positions = [SVector(0.0, 0.0), SVector(1.0, 0.0)]
-fields = [SVector(1.0 + 0.0im), SVector(0.0 + 1.0im)]
-results = FieldResult(positions, fields)
-```
-"""
-struct FieldResult{Dim,FieldDim,T<:Real}
-    "Spatial positions where field is evaluated"
-    x::Vector{SVector{Dim,T}}
-    "Field values at corresponding positions"
-    field::Vector{SVector{FieldDim,T}}
-
-    function FieldResult(x::AbstractVector{<:AbstractVector}, field::AbstractVector{<:AbstractVector})
-        T = eltype(x[1])
-        Dim = length(x[1])
-        FieldDim = length(field[1])
-
-        # Input validation
-        if length(field) != length(x)
-            throw(ArgumentError("The field and spatial positions must have the same number of elements"))
-        end
-        if !all(p -> length(p) == Dim, x)
-            throw(ArgumentError("All positions must have dimension $Dim"))
-        end
-        if !all(f -> length(f) == FieldDim, field)
-            throw(ArgumentError("All field values must have dimension $FieldDim"))
-        end
-
-        new{Dim,FieldDim,T}(convert(Vector{SVector{Dim,T}}, x),
-                           convert(Vector{SVector{FieldDim,T}}, field))
-    end
+    return ProblemSetup{S,Dim,P,PS,BD}(solver, medium, bd, particular_solution, source_positions)
 end
-
-field(fr::FieldResult) = fr.field
-
-# Interface implementations
-import Base.(+)
-import Base.(-)
-function +(fr1::FieldResult{D,F}, fr2::FieldResult{D,F}) where {D,F}
-    # lengths must match
-    if length(fr1.x) != length(fr2.x)
-        throw(ArgumentError("FieldResult must have the same number of positions"))
-    end
-
-    # positions must match elementwise
-    if !all(t -> t[1] == t[2], zip(fr1.x, fr2.x))
-        throw(ArgumentError("Spatial positions `x` are not compatible between the two FieldResult"))
-    end
-
-    # subtract field values elementwise
-    newfields = [fr1.field[i] + fr2.field[i] for i in eachindex(fr1.field)]
-
-    return FieldResult(fr1.x, newfields)
-end
--(fr1::FieldResult, fr2::FieldResult) = fr1 + FieldResult(fr2.x, - fr2.field)
-
-Base.length(fr::FieldResult) = length(fr.x)
-Base.getindex(fr::FieldResult, i::Int) = (fr.x[i], fr.field[i])
-Base.iterate(fr::FieldResult) = length(fr) == 0 ? nothing : ((fr.x[1], fr.field[1]), 1)
-Base.iterate(fr::FieldResult, state) = state >= length(fr) ? nothing : ((fr.x[state+1], fr.field[state+1]), state + 1)
 
 system_matrix(fsol::FundamentalSolution, bd::BoundaryData) = system_matrix(fsol.positions, fsol.medium, bd)
 
-function system_matrix(source_positions::Vector, medium::P, bd::BoundaryData{F,Dim}) where {P <: PhysicalMedium, F <: FieldType, Dim}
+system_matrix(problem::ProblemSetup) = system_matrix(problem.source_positions, problem.medium, problem.boundary_data)
+
+function system_matrix(source_positions::Vector{SVector{Dim,Float64}}, medium::P, bd::BoundaryData) where {Dim,P<:PhysicalMedium{Dim}}
+
+    points = bd.boundary_points
 
     Ms = [
-        greens(bd.fieldtype, medium, bd.boundary_points[i] - x, bd.outward_normals[i])    
-    for i in eachindex(bd.boundary_points), x in source_positions]
+        greens(bd.fieldtype, medium, points[i] - x, bd.outward_normals[i])    
+    for i in eachindex(points), x in source_positions]
 
     return mortar(Ms)
 end
 
-function solve(medium::P, bd::BoundaryData; 
-        solver::AbstractSolver = TikhonovSolver(),
-        kwargs...
-    ) where {P<:PhysicalMedium}
+function solve(medium::P, bd::BoundaryData; kwargs... ) where P <: PhysicalMedium
     
     # Dispatch to specific solver implementation
-    solve(solver, medium, bd; kwargs...)
+    problem = ProblemSetup(medium, bd; kwargs...)
+
+    solve(problem)
 end
 
 # Implement Tikhonov solver
-function solve(solver::TikhonovSolver, medium::P, bd::BoundaryData{F,Dim}; 
-        source_positions = source_positions(bd),
-    ) where {P <: PhysicalMedium, F <: FieldType, Dim}
+function solve(problem::ProblemSetup{TikhonovSolver{T}}) where T
 
-    M = system_matrix(source_positions, medium, bd)
+    M = system_matrix(problem)
 
-    forcing = vcat(bd.fields...)
+    forcing = vcat(problem.boundary_data.fields...)
 
     # Tikinov solution
     condM = cond(M)
-    sqrtλ = if solver.λ < zero(eltype(solver.λ)) 
-        condM * sqrt(solver.tolerance)
-    else sqrt(solver.λ)
+    sqrtλ = if problem.solver.λ < zero(eltype(problem.solver.λ)) 
+        condM * sqrt(problem.solver.tolerance)
+    else sqrt(problem.solver.λ)
     end
 
     bigM = [M; sqrtλ * I];
     coes = bigM \ [forcing; zeros(size(M)[2])]
 
-    println("Solved the system with condition number:$(condM), and with a relative error of boundary data: $(norm(M * coes - forcing) / norm(forcing)) with a tolerance of $(solver.tolerance)")
+    println("Solved the system with condition number:$(condM), and with a relative error of boundary data: $(norm(M * coes - forcing) / norm(forcing)) with a tolerance of $(problem.solver.tolerance)")
 
-    return FundamentalSolution(medium, source_positions, coes)
+    return FundamentalSolution(medium, problem.source_positions, coes)
 end
 
 function field(field_type::F, fsol::FundamentalSolution, x::AbstractVector, outward_normal::AbstractVector = zeros(typeof(x))) where F <: FieldType
