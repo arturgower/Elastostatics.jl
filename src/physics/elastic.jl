@@ -26,7 +26,17 @@ struct Elastostatic{Dim,T} <: PhysicalMedium{Dim,Dim}
 end
 
 struct DisplacementType <: FieldType end
+# DisplacementType(field::AbstractVector) = DisplacementType{length(field)}(SVector(field...))
+
 struct TractionType <: FieldType end
+    # field::SVector{Dim,Float64}
+    # outward_normal::SVector{Dim,Float64}
+
+# function TractionType(field::AbstractVector, outward_normal::AbstractVector)
+#     Dim = length(field)
+#     return TractionType{Dim}(SVector(field...), SVector(outward_normal...) ./ norm(outward_normal))
+# end
+
 struct ParticularGravity{T} <: ParticularSolution 
     g::T
     function ParticularGravity(; g::T = 9.81) where T
@@ -34,8 +44,7 @@ struct ParticularGravity{T} <: ParticularSolution
     end
 end
 
-function greens(tractiontype::TractionType, medium::Elastostatic{2,T}, x::SVector{2,T}, outward_normal::SVector{2,T}) where T
-
+function greens(traction::TractionType, medium::Elastostatic{2,T}, x::SVector{2,T}, outward_normal::SVector) where T
     n = outward_normal
     μ = medium.ρ * medium.cs^2  
     λ = medium.ρ * medium.cp^2 - 2μ
@@ -51,8 +60,7 @@ function greens(tractiontype::TractionType, medium::Elastostatic{2,T}, x::SVecto
     return Σn 
 end
 
-function greens(displacetype::DisplacementType, medium::Elastostatic{2,T},x::SVector{2,T}, outward_normal::SVector{2,T}) where T
-
+function greens(displace::DisplacementType, medium::Elastostatic{2,T}, x::SVector{2,T}, outward_normal) where T
     μ = medium.ρ * medium.cs^2  
     λ = medium.ρ * medium.cp^2 - 2μ
 
@@ -67,18 +75,7 @@ function greens(displacetype::DisplacementType, medium::Elastostatic{2,T},x::SVe
     return U
 end
 
-function particular_solution(medium::Elastostatic{2,T}, bd::BoundaryData{TractionType,2}, psol::ParticularGravity) where T
-
-    return map(eachindex(bd.boundary_points)) do i
-        σyy = -medium.ρ*psol.g*bd.boundary_points[i][2]
-        SVector(zero(T),σyy * bd.outward_normals[i][2])
-    end
-end
-
-function particular_solution(medium::Elastostatic{2,T}, bd::BoundaryData{TractionType,3}, psol::ParticularGravity) where T
-
-    return map(eachindex(bd.boundary_points)) do i
-        σzz = -medium.ρ*psol.g*bd.boundary_points[i][3]
-        SVector(zero(T), zero(T), σzz * bd.outward_normals[i][3])
-    end
+function field(traction::TractionType, medium::Elastostatic{Dim,T}, psol::ParticularGravity, x::Vector, outward_normal::Vector) where {T,Dim}
+    σzz = -medium.ρ*psol.g*x[Dim]
+    return SVector(zero(T),σyy * outward_normal[Dim])
 end

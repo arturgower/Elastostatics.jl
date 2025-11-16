@@ -7,7 +7,7 @@
     r = 1.3
     ε = 0.0
 
-    # Create point cloud with errors
+    # Create boundary data with errors
         points = [[r*cos(θ) + (rand() -0.5) * ε, r*sin(θ)+ (rand() -0.5) * ε] for θ in θs]
         outward_ns = [[cos(θ), sin(θ)] for θ in θs]
         interior_points = [[0.0, 0.0]]
@@ -29,25 +29,40 @@
     @test maximum(errors) < 0.1
    
     # Let us check whether the interior is correctly defined.
-    cloud = BoundaryData(DisplacementType(); 
+    points = [[r*cos(θ), r*sin(θ)] for θ in θs]
+    cloud = BoundaryData(DisplacementType();
         boundary_points = points,
         interior_points = interior_points
     )
 
-    x_vec, inds = points_in_shape(cloud; res = 20)
+    x_vec, inds = points_in_shape(cloud; res = 40)
     # x_vec is a square grid of points and x_vec[inds] are the points in the region.
-
     xs = x_vec[inds]
 
-    @test all([norm(x) < r * 1.1 for x in xs])
+    x1s = [x[1] for x in x_vec] |> unique;
+    x2s = [x[2] for x in x_vec] |> unique;
+    dx = abs(x1s[2] - x1s[1])
+    dy = abs(x2s[2] - x2s[1])
 
-    field_mat = [[0.0, 0.0] for x in x_vec]
+    # zs = zeros(x_vec |> length) 
+    # zs[inds] .= 1.0
+    # zs = reshape(zs, (length(x1s), length(x2s))) |> transpose;
+    # heatmap(x1s |> sort,x2s |> sort,zs)
+    # plot!(cloud)
 
-    # fs = [field(wave,x,fieldtype) for x in xs];
-    fs = [[1.0, 1.0] for x in xs];
-    field_mat[inds] = fs
+    @test all([norm(x) < r + norm([dx,dy]) for x in xs]) 
 
-    res = FieldResult(x_vec, field_mat[:])
+    # rough estimate of volume
+    volume = dx*dy * length(xs)
+    exact_volume = pi * r^2
+
+    @test abs(volume - exact_volume) < dx
+
+    fields = [
+        [0.0, 0.0]
+    for x in x_vec]
+
+    res = FieldResult(x_vec, fields)
 
     # using Plots
     # plot(res, clims = (-1,1))

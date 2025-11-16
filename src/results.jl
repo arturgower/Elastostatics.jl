@@ -14,10 +14,11 @@ struct FundamentalSolution{Dim,P<:PhysicalMedium{Dim}, PS <:ParticularSolution, 
     positions::Vector{SVector{Dim,T}}
     coefficients::Vector{C}
 
-    function FundamentalSolution(medium::P,
-            particular_solution::PS,
-            positions::Vector{<:AbstractVector},
-            coefficients::AbstractVector) where {P<:PhysicalMedium, PS <: ParticularSolution}
+    function FundamentalSolution(medium::P;
+            particular_solution::PS = NoParticularSolution(),
+            positions::Vector{<:AbstractVector} = [zeros(Float64,spatial_dimension(medium))],
+            coefficients::AbstractVector = [one(Float64)]
+        ) where {P<:PhysicalMedium, PS <: ParticularSolution}
         
         # Extract dimension information
         Dim = spatial_dimension(medium)
@@ -52,11 +53,14 @@ function FundamentalSolution(medium::P,
         particular_solution::PS = NoParticularSolution() 
     ) where {P<:PhysicalMedium, PS <: ParticularSolution}
     
-
     return FundamentalSolution(medium, particular_solution, positions, coefficients)
 end
 
-function field(field_type::F, fsol::FundamentalSolution, x::AbstractVector, outward_normal::AbstractVector = zeros(typeof(x))) where F <: FieldType
+function field(field_type::F, medium::P, psol::NoParticularSolution, x::AbstractVector, outward_normal::AbstractVector) where {F <: FieldType, P <: PhysicalMedium} 
+    return SVector(zero(x)...)
+end
+
+function field(field_type::F, fsol::FundamentalSolution, x::AbstractVector, outward_normal::AbstractVector = ones(x |> length)) where F <: FieldType
 
     outward_normal = SVector(outward_normal...) ./ norm(outward_normal)
     x = SVector(x...)
@@ -64,7 +68,16 @@ function field(field_type::F, fsol::FundamentalSolution, x::AbstractVector, outw
         greens(field_type, fsol.medium, x - p, outward_normal) 
     for p in fsol.positions]
 
-    return hcat(Gs...) * fsol.coefficients[:]
+    f = hcat(Gs...) * fsol.coefficients[:]
+    fp = field(field_type, fsol.medium, fsol.particular_solution, x, outward_normal)
+    return f + fp
+end
+
+function field(medium::P, bd::BoundaryData, psol::PS) where {P <: PhysicalMedium, PS <: ParticularSolution}
+    
+    return map(eachindex(bd.boundary_points)) do i
+        field(bd.fieldtype, medium, psol, bd.boundary_points[i], bd.outward_normals[i])
+    end
 end
 
 """

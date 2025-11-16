@@ -22,7 +22,7 @@ include("boundarydata.jl")
 export interior_points_along_coordinate
 include("utils.jl")
 
-export ProblemSetup, greens, source_positions
+export Simulation, greens, source_positions
 export solve, TikhonovSolver, system_matrix
 include("solve.jl")
 

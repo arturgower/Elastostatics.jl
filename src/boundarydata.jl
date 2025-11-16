@@ -100,18 +100,6 @@ function issubset(box::Box, cloud::BoundaryData)
     return all(c ∈ cloud for c in corners(box))
 end
 
-
-# function outward_normals(bd::BoundaryData)
-
-#     ns = outward_normals(bd.boundary_points, bd.interior_points)
-
-#     positions = map(bd.boundary_points |> eachindex) do i
-#         bd.boundary_points[i] + bd.outward_normals[i] .* source_distance 
-#     end
-
-#     return cloud
-# end
-
 function outward_normals(boundary_points, interior_points; 
         number_of_neighbours = min(2 * length(boundary_points[1]), max(1, length(boundary_points)-1))
     )

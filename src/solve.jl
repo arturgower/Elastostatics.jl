@@ -37,7 +37,7 @@ struct TikhonovSolver{T<:Real} <: AbstractSolver
     end
 end
 
-struct ProblemSetup{S <: AbstractSolver, Dim, P<:PhysicalMedium{Dim}, PS <:ParticularSolution, BD <: BoundaryData}
+struct Simulation{S <: AbstractSolver, Dim, P<:PhysicalMedium{Dim}, PS <:ParticularSolution, BD <: BoundaryData}
     solver::S
     medium::P
     boundary_data::BD
@@ -45,7 +45,7 @@ struct ProblemSetup{S <: AbstractSolver, Dim, P<:PhysicalMedium{Dim}, PS <:Parti
     source_positions::Vector{SVector{Dim,Float64}}
 end
 
-function ProblemSetup(medium::P, bd::BD; 
+function Simulation(medium::P, bd::BD; 
         solver::S = TikhonovSolver(),
         particular_solution::PS = NoParticularSolution(),
         source_positions = source_positions(bd; relative_source_distance = 1.2) 
@@ -55,10 +55,10 @@ function ProblemSetup(medium::P, bd::BD;
         BD <: BoundaryData{<:FieldType,Dim}
     }
 
-    return ProblemSetup{S,Dim,P,PS,BD}(solver, medium, bd, particular_solution, source_positions)
+    return Simulation{S,Dim,P,PS,BD}(solver, medium, bd, particular_solution, source_positions)
 end
 
-system_matrix(problem::ProblemSetup) = system_matrix(problem.source_positions, problem.medium, problem.boundary_data)
+system_matrix(problem::Simulation) = system_matrix(problem.source_positions, problem.medium, problem.boundary_data)
 
 function system_matrix(source_positions::Vector{SVector{Dim,Float64}}, medium::P, bd::BoundaryData) where {Dim,P<:PhysicalMedium{Dim}}
 
@@ -74,17 +74,21 @@ end
 function solve(medium::P, bd::BoundaryData; kwargs... ) where P <: PhysicalMedium
     
     # Dispatch to specific solver implementation
-    problem = ProblemSetup(medium, bd; kwargs...)
+    problem = Simulation(medium, bd; kwargs...)
 
     solve(problem)
 end
 
 # Implement Tikhonov solver
-function solve(problem::ProblemSetup{TikhonovSolver{T}}) where T
+function solve(problem::Simulation{TikhonovSolver{T}}) where T
 
     M = system_matrix(problem)
 
     forcing = vcat(problem.boundary_data.fields...)
+    
+    forcing_particular = field(problem.medium, problem.boundary_data, problem.particular_solution)
+    
+    forcing = forcing - vcat(forcing_particular...)
 
     # Tikinov solution
     condM = cond(M)
@@ -98,7 +102,11 @@ function solve(problem::ProblemSetup{TikhonovSolver{T}}) where T
 
     println("Solved the system with condition number:$(condM), and with a relative error of boundary data: $(norm(M * coes - forcing) / norm(forcing)) with a tolerance of $(problem.solver.tolerance)")
 
-    return FundamentalSolution(problem.medium, problem.source_positions, coes)
+    return FundamentalSolution(problem.medium; 
+        positions = problem.source_positions,
+        coefficients = coes, 
+        particular_solution = problem.particular_solution
+    )
 end
 
 """

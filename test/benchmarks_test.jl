@@ -1,5 +1,7 @@
+@testset "Benchmark analytic solutions" begin
+
 # Here we use solutions from Airy stress function to generate boundary data, and then solve with this package to compare.
-@testset "Benchmark circular domain" begin
+@testset "circular domain" begin
 
     medium = Elastostatic(2; ρ = 1.0, cp = 2.0, cs = 1.0)
 
@@ -16,15 +18,22 @@
 
     # Create boundary data for each resolution
     bds = map(θs_arr) do θs
+        
         points = [[r*cos(θ), r*sin(θ)] for θ in θs]
-        outward_normals = [[cos(θ), sin(θ)] for θ in θs]
         interior_points = [[0.0, 0.0]]
 
-        fields = [radial_to_cartesian_transform([r,θ])*[σrr(r,θ), σrθ(r,θ)] for θ in θs]
-        BoundaryData(TractionType(); 
-            boundary_points = points, 
+        normals = map(θs) do θ 
+            outward_normal = [cos(θ), sin(θ)] 
+        end
+        
+        fields = map(θs) do θ 
+            radial_to_cartesian_transform([r,θ])*[σrr(r,θ), σrθ(r,θ)]
+        end
+
+        BoundaryData(TractionType();
+            boundary_points = points,
             fields = fields, 
-            outward_normals = outward_normals,
+            outward_normals = normals, 
             interior_points = interior_points
         )
     end
@@ -33,7 +42,7 @@
     solver = TikhonovSolver(tolerance = 1e-12) 
     
     problems = map(bds) do bd
-        ProblemSetup(medium, bd; 
+        Simulation(medium, bd; 
             solver = solver,
             source_positions = source_positions(bd; relative_source_distance = 2.0) 
         )
@@ -77,10 +86,15 @@
     @test true
 end
 
-@testset "Benchmark annulus" begin
+@testset "Gravity rectangle" begin
+    @test true
+end
+
+@testset "Circular annulus" begin
     # From the Airy stress function we have the solution inside an annulus domain: 
     σrr(r,θ) = -2*cos(θ) / r^3
     σθθ(r,θ) = 2*cos(θ) / r^3
     σrθ(r,θ) = - 2*sin(θ) / r^3
 end
 
+end

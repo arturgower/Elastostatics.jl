@@ -111,7 +111,7 @@ medium = Elastostatic(2; ρ = 1.0, cp = 2.0, cs = 1.0)
 
     norm(M * svdM.Vt[end,:] - svdM.S[end] .* svdM.U[:,end]) / norm(M * svdM.Vt[end,:])
 
-    fsol_null = FundamentalSolution(fsol.medium, fsol.positions, svdM.Vt[end,:])
+    fsol_null = FundamentalSolution(fsol.medium; positions = fsol.positions, coefficients = svdM.Vt[end,:])
     
     fs = [
         field(TractionType(), fsol_null, x, x / norm(x)) 
