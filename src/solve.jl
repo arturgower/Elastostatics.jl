@@ -72,11 +72,8 @@ function system_matrix(source_positions::Vector{SVector{Dim,Float64}}, medium::P
 end
 
 function solve(medium::P, bd::BoundaryData; kwargs... ) where P <: PhysicalMedium
-    
-    # Dispatch to specific solver implementation
     problem = Simulation(medium, bd; kwargs...)
-
-    solve(problem)
+    return solve(problem)
 end
 
 # Implement Tikhonov solver
@@ -85,9 +82,7 @@ function solve(problem::Simulation{TikhonovSolver{T}}) where T
     M = system_matrix(problem)
 
     forcing = vcat(problem.boundary_data.fields...)
-    
     forcing_particular = field(problem.medium, problem.boundary_data, problem.particular_solution)
-    
     forcing = forcing - vcat(forcing_particular...)
 
     # Tikinov solution
