@@ -76,6 +76,32 @@
     end
 end
 
+@recipe function plot(sim::Simulation; source_positions = true)
+    # Set default attributes
+    legend --> false
+
+    # Extract source and evaluation points
+    sources = sim.source_positions
+
+    # Split into x and y coordinates
+    sx = [s[1] for s in sources]
+    sy = [s[2] for s in sources]
+
+    # Plot source points
+    if source_positions
+        @series begin
+            label --> "Source points"
+            seriestype --> :scatter
+            markersize --> 4.0
+            color --> :red
+            (sx, sy)
+        end
+    end
+
+    # Plot boundary data
+    @series sim.boundary_data
+end
+
 @recipe function plot(fsol::FundamentalSolution)
     # Set default attributes
     legend --> false

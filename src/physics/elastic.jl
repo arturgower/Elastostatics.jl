@@ -75,7 +75,7 @@ function greens(displace::DisplacementType, medium::Elastostatic{2,T}, x::SVecto
     return U
 end
 
-function field(traction::TractionType, medium::Elastostatic{Dim,T}, psol::ParticularGravity, x::Vector, outward_normal::Vector) where {T,Dim}
+function field(traction::TractionType, medium::Elastostatic{Dim,T}, psol::ParticularGravity, x::AbstractVector, outward_normal::AbstractVector) where {T,Dim}
     σzz = -medium.ρ*psol.g*x[Dim]
-    return SVector(zero(T),σyy * outward_normal[Dim])
+    return SVector(zero(T), σzz * outward_normal[Dim])
 end
