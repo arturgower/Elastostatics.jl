@@ -15,22 +15,24 @@ import Statistics: mean
 using RecipesBase
 
 
-export BoundaryData, outward_normals, points_in_shape
-export particular_solution
+export BoundaryData  # types
+export outward_normals, points_in_shape
 include("boundarydata.jl")
 
 export interior_points_along_coordinate
 include("utils.jl")
 
-export Simulation, greens, source_positions
-export solve, TikhonovSolver, system_matrix
+export Simulation, ParticularSolution, TikhonovSolver # types
+export greens, source_positions
+export solve, system_matrix
 include("solve.jl")
 
-export FieldResult, FundamentalSolution, field
+export FieldResult, FundamentalSolution
+export field # types
 include("results.jl")
 
-export DisplacementType, TractionType, Elastostatic, Acoustic
-export ParticularGravity
+export DisplacementType, TractionType, Elastostatic, Acoustic # types
+export ParticularGravity # types
 include("physics/elastic.jl")
 include("../plot/plot.jl")
 
