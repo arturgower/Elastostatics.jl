@@ -58,7 +58,7 @@ function Simulation(medium::P, bd::BD;
     return Simulation{S,Dim,P,PS,BD}(solver, medium, bd, particular_solution, source_positions)
 end
 
-system_matrix(problem::Simulation) = system_matrix(problem.source_positions, problem.medium, problem.boundary_data)
+system_matrix(sim::Simulation) = system_matrix(sim.source_positions, sim.medium, sim.boundary_data)
 
 function system_matrix(source_positions::Vector{SVector{Dim,Float64}}, medium::P, bd::BoundaryData) where {Dim,P<:PhysicalMedium{Dim}}
 
@@ -72,35 +72,35 @@ function system_matrix(source_positions::Vector{SVector{Dim,Float64}}, medium::P
 end
 
 function solve(medium::P, bd::BoundaryData; kwargs... ) where P <: PhysicalMedium
-    problem = Simulation(medium, bd; kwargs...)
-    return solve(problem)
+    sim = Simulation(medium, bd; kwargs...)
+    return solve(sim)
 end
 
 # Implement Tikhonov solver
-function solve(problem::Simulation{TikhonovSolver{T}}) where T
+function solve(sim::Simulation{TikhonovSolver{T}}) where T
 
-    M = system_matrix(problem)
+    M = system_matrix(sim)
 
-    forcing = vcat(problem.boundary_data.fields...)
-    forcing_particular = field(problem.medium, problem.boundary_data, problem.particular_solution)
+    forcing = vcat(sim.boundary_data.fields...)
+    forcing_particular = field(sim.medium, sim.boundary_data, sim.particular_solution)
     forcing = forcing - vcat(forcing_particular...)
 
     # Tikinov solution
     condM = cond(M)
-    sqrtλ = if problem.solver.λ < zero(eltype(problem.solver.λ)) 
-        condM * sqrt(problem.solver.tolerance)
-    else sqrt(problem.solver.λ)
+    sqrtλ = if sim.solver.λ < zero(eltype(sim.solver.λ)) 
+        condM * sqrt(sim.solver.tolerance)
+    else sqrt(sim.solver.λ)
     end
 
     bigM = [M; sqrtλ * I];
     coes = bigM \ [forcing; zeros(size(M)[2])]
 
-    println("Solved the system with condition number:$(condM), and with a relative error of boundary data: $(norm(M * coes - forcing) / norm(forcing)) with a tolerance of $(problem.solver.tolerance)")
+    println("Solved the system with condition number:$(condM), and with a relative error of boundary data: $(norm(M * coes - forcing) / norm(forcing)) with a tolerance of $(sim.solver.tolerance)")
 
-    return FundamentalSolution(problem.medium; 
-        positions = problem.source_positions,
+    return FundamentalSolution(sim.medium; 
+        positions = sim.source_positions,
         coefficients = coes, 
-        particular_solution = problem.particular_solution
+        particular_solution = sim.particular_solution
     )
 end
 
