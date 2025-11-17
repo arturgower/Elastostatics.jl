@@ -36,6 +36,7 @@ struct TractionType <: FieldType end
 #     Dim = length(field)
 #     return TractionType{Dim}(SVector(field...), SVector(outward_normal...) ./ norm(outward_normal))
 # end
+struct StrainType <: FieldType end
 
 struct ParticularGravity{T} <: ParticularSolution 
     g::T
