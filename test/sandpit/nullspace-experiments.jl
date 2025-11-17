@@ -34,14 +34,16 @@ medium = Elastostatic(2; ρ = 1.0, cp = 2.0, cs = 1.0)
     end
     n=i
     #Nsources=length(bds[n].boundary_points)
-    rsource=1.0451989236591015
-    θsource=θs_arr[n-1]
+    rsource=1.0051989236591015
+    N_sources=1081
+    θsource=LinRange(0,2pi,N_sources)[1:(N_sources-1)]
     source_pos=[ [rsource*cos(θ), rsource*sin(θ)] for θ in θsource ]
 
     # Solve
+    solver = TikhonovSolver(tolerance = 1e-8)
     fsols = map(bds) do bd
-        fsol = FundamentalSolution(medium, bd; 
-            tol = 1e-10, 
+        fsol = solve(medium, bd; 
+            solver=solver, 
          #   source_positions = source_positions(bd; relative_source_distance = 1.0) 
             source_positions = source_pos 
         )
@@ -54,8 +56,8 @@ medium = Elastostatic(2; ρ = 1.0, cp = 2.0, cs = 1.0)
     predict_fields = [field(TractionType(), fsol, points[i], normals[i]) for i in eachindex(points)]
     fields = [radial_to_cartesian_transform(SVector(r,θ))*[σrr(r,θ), σrθ(r,θ)] for θ in θs]
 
-    Msystem=source_system(fsol,bds[n])
-
+    Msystem=system_matrix(fsol,bds[n])
+    typeof(Msystem)
     Msystem=Matrix(Msystem)
     
     F=svd(Msystem)
@@ -111,7 +113,7 @@ medium = Elastostatic(2; ρ = 1.0, cp = 2.0, cs = 1.0)
 
     norm(M * svdM.Vt[end,:] - svdM.S[end] .* svdM.U[:,end]) / norm(M * svdM.Vt[end,:])
 
-    fsol_null = FundamentalSolution(fsol.medium; positions = fsol.positions, coefficients = svdM.Vt[end,:])
+    fsol_null = FundamentalSolution(fsol.medium, fsol.positions, svdM.Vt[end,:])
     
     fs = [
         field(TractionType(), fsol_null, x, x / norm(x)) 

@@ -37,6 +37,8 @@ struct TractionType <: FieldType end
 #     return TractionType{Dim}(SVector(field...), SVector(outward_normal...) ./ norm(outward_normal))
 # end
 struct StrainType <: FieldType end
+    # field::SVector{Dim,Float64}
+    # outward_normal::SVector{Dim,Float64}
 
 struct ParticularGravity{T} <: ParticularSolution 
     g::T
@@ -74,6 +76,25 @@ function greens(displace::DisplacementType, medium::Elastostatic{2,T}, x::SVecto
 
     U = U ./ (8pi*μ*(1-ν))
     return U
+end
+
+function greens(strain::StrainType, medium::Elastostatic{2,T}, x::SVector{2,T}, strain_direction::SVector) where T
+    s = strain_direction
+    μ = medium.ρ * medium.cs^2  
+    λ = medium.ρ * medium.cp^2 - 2μ
+
+    ν = λ / (2λ + 2μ)
+    r2 = dot(x,x)
+    xs = dot(x,s)
+
+    Es=[
+        (3-4ν)*( xs*(l==i) + x[i]*s[l] )- 2*x[l]*s[i]   
+    for i = 1:2, l = 1:2]
+    
+    Es=Es./(16pi*μ*(1-ν)*r2)
+    
+    return   Es
+
 end
 
 function field(traction::TractionType, medium::Elastostatic{Dim,T}, psol::ParticularGravity, x::AbstractVector, outward_normal::AbstractVector) where {T,Dim}
