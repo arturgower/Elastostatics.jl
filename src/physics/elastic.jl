@@ -38,7 +38,7 @@ struct TractionType <: FieldType end
 # end
 struct StrainType <: FieldType end
     # field::SVector{Dim,Float64}
-    # outward_normal::SVector{Dim,Float64}
+    # strain_direction::SVector{Dim,Float64}
 
 struct ParticularGravity{T} <: ParticularSolution 
     g::T
@@ -87,13 +87,13 @@ function greens(strain::StrainType, medium::Elastostatic{2,T}, x::SVector{2,T}, 
     r2 = dot(x,x)
     xs = dot(x,s)
 
-    Es=[
-        (3-4ν)*( xs*(l==i) + x[i]*s[l] )- 2*x[l]*s[i]   
+    Es = [
+         (3-4ν)*( xs*(l==i) + x[i]*s[l] )- 2*x[l]*s[i]  - s[l]*x[i] - xs*(l==i) + 4*xs*x[i]*x[l]/r2
     for i = 1:2, l = 1:2]
     
     Es=Es./(16pi*μ*(1-ν)*r2)
     
-    return   Es
+    return Es
 
 end
 
