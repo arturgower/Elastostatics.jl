@@ -95,12 +95,15 @@ function solve(sim::Simulation{TikhonovSolver{T}}) where T
     bigM = [M; sqrtλ * I];
     coes = bigM \ [forcing; zeros(size(M)[2])]
 
+    relative_error = norm(M * coes - forcing) / norm(forcing)
+
     println("Solved the system with condition number:$(condM), and with a relative error of boundary data: $(norm(M * coes - forcing) / norm(forcing)) with a tolerance of $(sim.solver.tolerance)")
 
     return FundamentalSolution(sim.medium; 
         positions = sim.source_positions,
         coefficients = coes, 
-        particular_solution = sim.particular_solution
+        particular_solution = sim.particular_solution,
+        relative_boundary_error = relative_error
     )
 end
 

@@ -13,48 +13,50 @@ struct FundamentalSolution{Dim,P<:PhysicalMedium{Dim}, PS <:ParticularSolution, 
     particular_solution::PS
     positions::Vector{SVector{Dim,T}}
     coefficients::Vector{C}
-
-    function FundamentalSolution(medium::P;
-            particular_solution::PS = NoParticularSolution(),
-            positions::Vector{<:AbstractVector} = [zeros(Float64,spatial_dimension(medium))],
-            coefficients::AbstractVector = [one(Float64)]
-        ) where {P<:PhysicalMedium, PS <: ParticularSolution}
-        
-        # Extract dimension information
-        Dim = spatial_dimension(medium)
-        T = eltype(positions[1])
-        C = eltype(coefficients)
-        
-        # Validate dimensions
-        if !all(p -> length(p) == Dim, positions)
-            throw(ArgumentError("All positions must have dimension $Dim"))
-        end
-
-        # Validate coefficients
-        FD = field_dimension(medium)
-        if length(coefficients) != length(positions) * FD 
-            throw(ArgumentError(
-                "Expected $(length(positions) * FD) coefficients but got $(length(coefficients))"
-            ))
-        end
-
-        # Convert inputs to proper types
-        pos_converted = convert(Vector{SVector{Dim,T}}, positions)
-        coef_converted = convert(Vector{C}, coefficients)
-
-        return new{Dim,P,PS,T,C}(medium, particular_solution, pos_converted, coef_converted)
-    end
+    relative_boundary_error::T
 end
 
-
-function FundamentalSolution(medium::P,
-        positions::Vector{<:AbstractVector},
-        coefficients::AbstractVector; 
-        particular_solution::PS = NoParticularSolution() 
+function FundamentalSolution(medium::P;
+        particular_solution::PS = NoParticularSolution(),
+        positions::Vector{<:AbstractVector} = [zeros(Float64,spatial_dimension(medium))],
+        coefficients::AbstractVector = [one(Float64)],
+        relative_boundary_error = zero(Float64)
     ) where {P<:PhysicalMedium, PS <: ParticularSolution}
     
-    return FundamentalSolution(medium, particular_solution, positions, coefficients)
+    # Extract dimension information
+    Dim = spatial_dimension(medium)
+    T = eltype(positions[1])
+    C = eltype(coefficients)
+    
+    # Validate dimensions
+    if !all(p -> length(p) == Dim, positions)
+        throw(ArgumentError("All positions must have dimension $Dim"))
+    end
+
+    # Validate coefficients
+    FD = field_dimension(medium)
+    if length(coefficients) != length(positions) * FD 
+        throw(ArgumentError(
+            "Expected $(length(positions) * FD) coefficients but got $(length(coefficients))"
+        ))
+    end
+
+    # Convert inputs to proper types
+    pos_converted = convert(Vector{SVector{Dim,T}}, positions)
+    coef_converted = convert(Vector{C}, coefficients)
+
+    return FundamentalSolution{Dim,P,PS,T,C}(medium, particular_solution, pos_converted, coef_converted, relative_boundary_error)
 end
+
+
+# function FundamentalSolution(medium::P,
+#         positions::Vector{<:AbstractVector},
+#         coefficients::AbstractVector; 
+#         kws... 
+#     ) where {P<:PhysicalMedium, PS <: ParticularSolution}
+    
+#     return FundamentalSolution(medium, particular_solution, positions, coefficients)
+# end
 
 function field(field_type::F, medium::P, psol::NoParticularSolution, x::AbstractVector, outward_normal::AbstractVector) where {F <: FieldType, P <: PhysicalMedium} 
     return SVector(zero(x)...)

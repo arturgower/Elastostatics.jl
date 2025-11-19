@@ -158,7 +158,8 @@ end
     import MethodOfFundamentalSolutions: field
     struct RectangleGravity <: ParticularSolution end
 
-    function field(traction::TractionType, medium::Elastostatic, psol::RectangleGravity, x::AbstractVector, outward_normal::AbstractVector)
+    # Care must be taken when adding a stress field, such as below. The added field needs to satisfy the compatible equations, as well as the Navier equations (with the correct forcing term added).
+    function MethodOfFundamentalSolutions.field(traction::TractionType, medium::Elastostatic, psol::RectangleGravity, x::AbstractVector, outward_normal::AbstractVector)
 
         g = 9.81
         σyy = medium.ρ*g*x[2] - weight / (2L)
