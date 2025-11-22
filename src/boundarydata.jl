@@ -35,11 +35,11 @@ struct BoundaryData{F <: FieldType, Dim, FieldDim} <: Shape{Dim}
 end
 
 function BoundaryData(field_type::F; 
-        boundary_points::Vector{V} = [zeros(Float64,2)], 
+        boundary_points::Vector = [zeros(Float64,2)], 
         fields::Vector{FV} = [p .* 0.0 for p in boundary_points],
-        interior_points::Vector{V} = [mean(boundary_points)],
-        outward_normals::Vector{V} = outward_normals(boundary_points,interior_points),
-    ) where {F <: FieldType, V <: AbstractVector, FV <: AbstractVector}
+        interior_points::Vector = [mean(boundary_points)],
+        outward_normals::Vector = outward_normals(boundary_points,interior_points),
+    ) where {F <: FieldType, FV <: AbstractVector}
 
     Dim = length(boundary_points[1])
     FieldDim = length(fields[1])
@@ -56,7 +56,7 @@ name(shape::BoundaryData) = "BoundaryData"
 bounding_box(cloud::BoundaryData) = Box(cloud.boundary_points)
 
 # function BoundaryData(medium::Ph, bd::BoundaryData, psol::P) where {Ph <: PhysicalMedium,P <: ParticularSolution}
-#     fs = particular_solution(medium,bd,psol)
+#     fs = field(medium,bd,psol)
    
 #     bd_particular = @set bd.fields = bd.fields + fs
 #     return bd_particular

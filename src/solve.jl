@@ -114,7 +114,7 @@ Return source positions for MFS from some `BoundaryData`.
 
 - α: scale factor for the distance of the source from the boundary d = α * h, where h is the average distance between consecutive points on the boundary.
 """
-function source_positions(cloud::BoundaryData; relative_source_distance = 2.0) 
+function source_positions(cloud::BoundaryData; relative_source_distance = 1.0) 
 
     points = cloud.boundary_points 
     len = points |> length

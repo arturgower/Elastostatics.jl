@@ -29,7 +29,8 @@ function interior_points_along_coordinate(points; offset_percent = 0.1,
         inner_high = maxc - offset_percent * (maxc - minc)
         pc = p[coordinate_number]
         t = clamp((pc - minc) / (maxc - minc), 0.0, 1.0)
-        p[coordinate_number] = inner_low + t * (inner_high - inner_low)
+
+        p = @set p[coordinate_number] = inner_low + t * (inner_high - inner_low)
         p
     end
 
